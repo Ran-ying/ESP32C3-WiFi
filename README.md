@@ -7,7 +7,7 @@
 | 里程碑 | 软件 | 实机验收 |
 | --- | --- | --- |
 | M1 APSTA / 扫描 / UI / 信道切换 | 已实现，验证见 docs/test-results.md | CH1/6/11 + iPhone Safari 待测试 |
-| M2 被动 EAPOL 分析 / 导出 | 开发中 | NOT TESTED |
+| M2 被动 EAPOL 分析 / 导出 | 已实现；主机协议测试与固件编译通过 | 空口握手捕获 NOT TESTED |
 | M3 手机本地密码验证 | 开发中 | NOT TESTED |
 
 ## 构建与使用

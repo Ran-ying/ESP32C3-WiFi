@@ -1,5 +1,6 @@
 #include "web.h"
 #include "lab_wifi.h"
+#include "sniffer.h"
 #include "esp_http_server.h"
 #include <string.h>
 #include <stdlib.h>
@@ -14,6 +15,8 @@ static esp_err_t json(httpd_req_t *r,cJSON *o) {
     esp_err_t e=httpd_resp_sendstr(r,s);free(s);return e;
 }
 static esp_err_t status(httpd_req_t *r){return json(r,lab_wifi_status());}
+static esp_err_t capture(httpd_req_t *r){return json(r,sniffer_status());}
+static esp_err_t pcap(httpd_req_t *r){size_t n;uint8_t *p=sniffer_pcap(&n);if(!p)return httpd_resp_send_err(r,HTTPD_500_INTERNAL_SERVER_ERROR,"Capture validation/allocation failed");httpd_resp_set_type(r,"application/vnd.tcpdump.pcap");httpd_resp_set_hdr(r,"Content-Disposition","attachment; filename=capture.pcap");httpd_resp_set_hdr(r,"Cache-Control","no-store");esp_err_t e=httpd_resp_send(r,(const char*)p,n);free(p);return e;}
 static esp_err_t networks(httpd_req_t *r){return json(r,lab_wifi_networks());}
 static esp_err_t result(httpd_req_t *r,esp_err_t e) {
     httpd_resp_set_status(r,e==ESP_OK?"202 Accepted":"409 Conflict");
@@ -54,6 +57,7 @@ void web_start(void){
     httpd_config_t c=HTTPD_DEFAULT_CONFIG();c.stack_size=8192;c.max_uri_handlers=16;c.lru_purge_enable=true;
     ESP_ERROR_CHECK(httpd_start(&server,&c));
     route("/",HTTP_GET,asset);route("/app.js",HTTP_GET,asset);route("/style.css",HTTP_GET,asset);
+    route("/api/capture",HTTP_GET,capture);route("/api/capture.pcap",HTTP_GET,pcap);route("/api/handshakes.json",HTTP_GET,capture);
     route("/api/status",HTTP_GET,status);route("/api/networks",HTTP_GET,networks);
     route("/api/scan",HTTP_POST,scan);route("/api/target",HTTP_POST,select_target);
     lab_wifi_hooks(web_stop,web_start);

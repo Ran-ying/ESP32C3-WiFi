@@ -13,3 +13,10 @@
 - ESP-IDF v5.4.2 构建：PASS，app 0xc2d90 字节，标准 1 MiB 应用分区剩余 24%。
 - Chromium UI 模拟测试：BLOCKED，执行环境禁止浏览器所需的 socket；测试脚本已提供，未记 PASS。
 - iPhone Safari、CH1/6/11 切换与重新连接：NOT TESTED，等待人工配合。
+
+## M2
+
+- ESP-IDF v5.4.2 构建：PASS，app 0xc50a0 字节，应用分区剩余 23%。
+- `tests/run-protocol.sh`：PASS，GCC 主机 AddressSanitizer + UndefinedBehaviorSanitizer；DS 方向、QoS/HT、所有截断长度、64 位计数器、重传、乱序、非完整可验证会话、Nonce 冲突、多客户端、版本不支持、会话淘汰、导出拒绝非法帧，以及 20,000 条确定性随机输入。无堆分配的协议核心测试禁用 LeakSanitizer（环境 ptrace 限制），保留地址和未定义行为检查。
+- M1 网页 JS 语法回归：PASS。
+- 实际授权网络 EAPOL、iPhone 实时展示、PCAP 空口对照：NOT TESTED。

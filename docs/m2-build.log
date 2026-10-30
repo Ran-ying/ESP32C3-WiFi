@@ -1,0 +1,43 @@
+Executing action: all (aliases: build)
+Running ninja in directory /root/ESP32C3-WiFi/build
+Executing "ninja all"...
+[1/20] Performing build step for 'bootloader'
+[1/1] cd /root/ESP32C3-WiFi/build/bootloader/esp-idf/esptool_py && /root/.espressif-c3/python_env/idf5.4_py3.12_env/bin/python /root/esp-idf-c3-v5.4.2/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 /root/ESP32C3-WiFi/build/bootloader/bootloader.bin
+Bootloader binary size 0x5120 bytes. 0x2ee0 bytes (37%) free.
+[2/20] No install step for 'bootloader'
+[3/20] Completed 'bootloader'
+[4/20] Building C object esp-idf/sniffer/CMakeFiles/__idf_sniffer.dir/sniffer.c.obj
+[5/20] Building C object esp-idf/handshake/CMakeFiles/__idf_handshake.dir/handshake.c.obj
+[6/20] Linking C static library esp-idf/handshake/libhandshake.a
+[7/20] Linking C static library esp-idf/sniffer/libsniffer.a
+[8/20] Generating ../../app.js.S
+[9/20] Building ASM object esp-idf/web/CMakeFiles/__idf_web.dir/__/__/style.css.S.obj
+[10/20] Building ASM object esp-idf/web/CMakeFiles/__idf_web.dir/__/__/index.html.S.obj
+[11/20] Building ASM object esp-idf/web/CMakeFiles/__idf_web.dir/__/__/app.js.S.obj
+[12/20] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/main.c.obj
+[13/20] Building C object esp-idf/web/CMakeFiles/__idf_web.dir/web.c.obj
+[14/20] Linking C static library esp-idf/web/libweb.a
+[15/20] Linking C static library esp-idf/main/libmain.a
+[16/20] Generating ld/sections.ld
+info: Trying to set symbol ESPTOOLPY_FLASHSIZE_2MB to n, but it is currently selected by choice ESPTOOLPY_FLASHSIZE. For setting it to n, set another choice symbol to y instead.
+info: Trying to set symbol COMPILER_OPTIMIZATION_DEBUG to n, but it is currently selected by choice COMPILER_OPTIMIZATION. For setting it to n, set another choice symbol to y instead.
+info: Trying to set symbol ESP_CONSOLE_UART_DEFAULT to n, but it is currently selected by choice ESP_CONSOLE_UART. For setting it to n, set another choice symbol to y instead.
+[17/20] Building C object CMakeFiles/esp32c3_wifi_lab.elf.dir/project_elf_src_esp32c3.c.obj
+[18/20] Linking CXX executable esp32c3_wifi_lab.elf
+[19/20] Generating binary image from built executable
+esptool.py v4.8.1
+Creating esp32c3 image...
+Merged 1 ELF section
+Successfully created esp32c3 image.
+Generated /root/ESP32C3-WiFi/build/esp32c3_wifi_lab.bin
+[20/20] cd /root/ESP32C3-WiFi/build/esp-idf/esptool_py && /root/.espressif-c3/python_env/idf5.4_py3.12_env/bin/python /root/esp-idf-c3-v5.4.2/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /root/ESP32C3-WiFi/build/partition_table/partition-table.bin /root/ESP32C3-WiFi/build/esp32c3_wifi_lab.bin
+esp32c3_wifi_lab.bin binary size 0xc50a0 bytes. Smallest app partition is 0x100000 bytes. 0x3af60 bytes (23%) free.
+
+Project build complete. To flash, run:
+ idf.py flash
+or
+ idf.py -p PORT flash
+or
+ python -m esptool --chip esp32c3 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 4MB --flash_freq 80m 0x0 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/esp32c3_wifi_lab.bin
+or from the "/root/ESP32C3-WiFi/build" directory
+ python -m esptool --chip esp32c3 -b 460800 --before default_reset --after hard_reset write_flash "@flash_args"
