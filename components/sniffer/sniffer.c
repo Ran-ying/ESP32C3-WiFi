@@ -61,8 +61,11 @@ void sniffer_init(void){
 void sniffer_stop(void){portENTER_CRITICAL(&mux);enabled=false;portEXIT_CRITICAL(&mux);ESP_ERROR_CHECK(esp_wifi_set_promiscuous(false));}
 void sniffer_start(const lab_target_t *t){
     xSemaphoreTake(lock,portMAX_DELAY);
-    memset(&store,0,sizeof(store));record_count=record_next=accepted=overwritten=rejected=0;last_us=0;
-    portENTER_CRITICAL(&mux);selected=*t;generation++;data_frames=queue_drops=oversize=wrong_channel=0;enabled=true;portEXIT_CRITICAL(&mux);
+    bool same=selected.valid && !memcmp(selected.bssid,t->bssid,6) && selected.channel==t->channel &&
+              selected.ssid_len==t->ssid_len && !memcmp(selected.ssid,t->ssid,t->ssid_len) &&
+              selected.auth==t->auth && selected.pairwise==t->pairwise;
+    if(!same){memset(&store,0,sizeof(store));record_count=record_next=accepted=overwritten=rejected=0;last_us=0;}
+    portENTER_CRITICAL(&mux);selected=*t;generation++;if(!same)data_frames=queue_drops=oversize=wrong_channel=0;enabled=true;portEXIT_CRITICAL(&mux);
     xSemaphoreGive(lock);ESP_ERROR_CHECK(esp_wifi_set_promiscuous(true));
 }
 static void hex(cJSON *o,const char *name,const uint8_t *p,size_t n){

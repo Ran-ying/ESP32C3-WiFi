@@ -1,0 +1,11 @@
+2026-10-30 ESP32-C3 final preset firmware
+App SHA256: 2ec21fe8825dc10e7de279eacbbaf2064d67583ea29975ebfbb186c13449b0ea
+App bytes: 828112
+esptool verify_flash: OK (digest matched)
+Configured channels=1-13
+Wi-Fi mode=APSTA
+DHCP server=192.168.4.1
+app_main returned normally
+8-second observation: one boot
+Requested private SoftAP password active=true
+New Safari UI/preset/capture-retention hardware acceptance: NOT TESTED

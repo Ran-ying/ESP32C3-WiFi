@@ -1,10 +1,10 @@
 const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/strict');
 const fixture=require('./fixtures/wpa2-synthetic.json'),WPA2=require('../web/crypto.js');
 const source=fs.readFileSync(require.resolve('../web/worker.js'),'utf8');
-function harness(){
+function harness(verifier=WPA2){
  const events=[],timers=new Set();let resolve,reject;
  const done=new Promise((a,b)=>{resolve=a;reject=b;});
- const context={WPA2,Blob,Uint8Array,performance,console,importScripts:p=>assert.equal(p,'/crypto.js'),postMessage:m=>{events.push(m);if(['found','done','error'].includes(m.type))resolve(m);},setTimeout:(f,ms)=>{const t=setTimeout(()=>{timers.delete(t);f();},ms);timers.add(t);return t;}};
+ const context={WPA2:verifier,Blob,Uint8Array,performance,console,importScripts:p=>assert.equal(p,'/crypto.js'),postMessage:m=>{events.push(m);if(['found','done','error'].includes(m.type))resolve(m);},setTimeout:(f,ms)=>{const t=setTimeout(()=>{timers.delete(t);f();},ms);timers.add(t);return t;}};
  vm.createContext(context);vm.runInContext(source,context);
  return {events,send:m=>context.onmessage({data:m}),done,close:()=>{for(const t of timers)clearTimeout(t);},wait:()=>Promise.race([done,new Promise((_,r)=>{const t=setTimeout(()=>r(Error('Worker test timeout')),15000);timers.add(t);})])};
 }
@@ -27,5 +27,25 @@ function harness(){
  h=harness();try{
   h.send({type:'start',record:{...fixture.record,version:3},file:new Blob([fixture.password])});assert.equal((await h.wait()).type,'error');
  }finally{h.close();}
+ // Real MIC verification through the generated numeric source.
+ h=harness();try{
+  const numeric=require('./fixtures/wpa2-numeric.json');
+  h.send({type:'start',source:'numeric8',start:'00000000',end:'00000003',record:numeric.record});
+  const m=await h.wait();assert.equal(m.type,'found');assert.equal(m.password,'00000002');assert.equal(m.tested,3);assert.equal(m.total,4);assert.equal(m.processed,3);assert.equal(m.unit,'candidates');
+ }finally{h.close();}
+ // Boundary enumeration including leading zeros and the inclusive last value.
+ for(const [start,end,expected] of [['00000000','00000002',['00000000','00000001','00000002']],['99999998','99999999',['99999998','99999999']]]){
+  const seen=[];h=harness({prepare:r=>r,verifyPrepared:p=>{seen.push(p);return false;}});
+  try{h.send({type:'start',source:'numeric8',start,end,record:fixture.record});const m=await h.wait();assert.equal(m.type,'done');assert.deepEqual(seen,expected);assert.equal(m.processed,m.total);}
+  finally{h.close();}
+ }
+ h=harness();try{
+  const numeric=require('./fixtures/wpa2-numeric.json');h.send({type:'start',source:'numeric8',start:'00000002',end:'00000002',record:numeric.record});h.send({type:'pause'});
+  await new Promise(r=>setTimeout(r,40));assert(!h.events.some(m=>m.type==='found'));h.send({type:'resume'});assert.equal((await h.wait()).type,'found');
+ }finally{h.close();}
+ for(const [start,end] of [['123','00000009'],['00000010','00000009'],['abcdefgh','99999999']]){
+  h=harness();try{h.send({type:'start',source:'numeric8',start,end,record:fixture.record});assert.equal((await h.wait()).type,'error');}finally{h.close();}
+ }
+ console.log('PASS numeric8: real MIC, zero padding, inclusive bounds, progress, pause/resume, invalid ranges');
  console.log('PASS Worker without WebCrypto: 64KiB boundaries, BOM/CRLF/EOF, long/invalid lines, correct/wrong candidates, pause/resume, rejected unsupported handshake');
 })().catch(e=>{console.error(e);process.exitCode=1;});
