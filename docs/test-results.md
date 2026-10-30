@@ -64,3 +64,13 @@
 - Chromium `file://` + offline context：PASS，真实 1/4 Worker 运行、64 候选全部覆盖、实际 MIC 匹配、TXT/数字、暂停/继续/停止、SSID/Nonce 缺失禁用，以及零 HTTP 请求。详见 standalone-ui.log。
 - 开发 VM Chromium 156.0.8078.47 小样本测速，64 个错误候选、含 Worker 启动开销：JS 1 Worker 约 8.0/s，4 Worker 约 11.4/s；原生 PBKDF2 1 Worker 约 173.9/s，4 Worker 约 212.2/s。仅是这台 VM 的短样本，不表示 iPhone 性能或线性加速；详见 standalone-benchmark.log。首次 512 候选纯 JS 样本超过 60 秒测试超时，缩小到 64 候选后四种配置均完整结束。
 - 真实 iPhone Safari、本用户导出的 PCAP 与实际密码：NOT TESTED。使用的所有 PCAP 测试数据来自合成夹具，不保存真实标识或密码。
+
+## 设备网页并行验证、生日与网络行布局（2026-10-30）
+
+- 新版设备页复用独立 HTML 的 PCAP/PCAPNG 解析器、候选来源、密码学引擎和 Worker 池。并行数可设 1–256，支持设备抓包/手机本地 PCAP、数字、生日与 TXT；文件及候选不上传。旧 `/worker.js` 兼容入口保留。
+- 网络列表 390×844 浏览器布局断言：信息块右边界不超过右侧按钮左边界，按钮仅显示“切换”。BSSID 区分、SSID 转义、确认/取消/成功弹窗、CH13/14 边界与断线恢复回归通过。
+- `npm test`：PASS。生日源测试包含 1900/2000 世纪闰年、闭区间、三种 8 位格式、非法日期/倒置范围，以及 Python 独立合成密码 20000229 的 MIC 正误验证；生成的设备与单文件资源同步检查通过。
+- 普通 HTTP Chromium、真实并行 Worker：PASS，数字/TXT、3 个有效日期的生日范围匹配正确 MIC、PCAP 在本地导入、缺失 SSID 禁用、暂停/继续/停止、重连恢复；HTTP POST 中无导入数据或密码候选。并行命中时不要求串行的固定测试次数。
+- 独立 HTML `file://` 离线回归与协议 ASan/UBSan 回归：PASS。记录见 device-parallel-*.log。
+- ESP-IDF v5.4.2 构建：PASS，app 0xd26f0 字节，标准应用分区剩余 18%。
+- 新固件烧录/校验与串口启动：PASS，最终 app SHA256 `bc01343ed71977ad808d275d7eea6c7ad73f7a614c0adb6841287ea9a2131c12`，861936 字节，传输后先校验 SHA256 再烧录；esptool verify_flash 报告整段应用 digest matched。串口确认 APSTA、CH1–13、192.168.4.1 DHCP、app_main 正常返回，8 秒窗口一次启动，私有热点密码生效。新版 iPhone Safari 多 Worker/生日/PCAP 与真网空口验收仍 NOT TESTED。

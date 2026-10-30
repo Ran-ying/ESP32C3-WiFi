@@ -7,8 +7,9 @@
 <label>会话<select id="session"><option value="">请先导入抓包</option></select></label><pre id="handshake">尚未导入</pre>
 <label>SSID<input id="ssid" type="text" maxlength="64" autocomplete="off" spellcheck="false" placeholder="抓包没有 SSID 时，请手动填写原始名称"></label><label class="check"><input id="ssid-hex" type="checkbox"> SSID 输入为原始十六进制字节</label>
 <p>ESP32 导出的认证帧 PCAP 通常没有 SSID，必须填写正确名称。缺少 Nonce、M2 或算法证据时禁止验证。</p></section>
-<section><h2>2 · 候选与并行</h2><label>候选来源<select id="source"><option value="numeric">8 位纯数字</option><option value="file">本地 TXT 字典</option></select></label>
+<section><h2>2 · 候选与并行</h2><label>候选来源<select id="source"><option value="numeric">8 位纯数字</option><option value="birthday">8 位生日</option><option value="file">本地 TXT 字典</option></select></label>
 <div id="numeric-settings" class="row"><label>起始（含）<input id="range-start" value="00000000" type="text" inputmode="numeric" maxlength="8"></label><label>结束（含）<input id="range-end" value="99999999" type="text" inputmode="numeric" maxlength="8"></label></div>
+<div id="birthday-settings" hidden><div class="row"><label>起始日期<input id="birthday-start" type="date" value="1900-01-01"></label><label>结束日期<input id="birthday-end" type="date"></label></div><label>日期格式<select id="birthday-format"><option value="YYYYMMDD">YYYYMMDD</option><option value="DDMMYYYY">DDMMYYYY</option><option value="MMDDYYYY">MMDDYYYY</option></select></label><p>只生成有效公历日期，包含闰年。</p></div>
 <label id="file-settings" hidden>TXT 字典<input id="dictionary" type="file" accept=".txt,text/plain"></label>
 <div class="row"><label>并行 Worker 数（1–256）<input id="workers" type="number" min="1" max="256" step="1" value="4"></label><label>运算引擎<select id="engine"><option value="auto">自动：优先原生 PBKDF2</option><option value="native">浏览器原生 PBKDF2</option><option value="js">纯 JavaScript</option></select></label></div>
 <p id="hardware"></p><p>数字按需生成，不保存一亿行文件。每个 Worker 领取不重复的区间；TXT 单次读取并分批分配，支持 ASCII 密码 8–63 字节。原生引擎不可用时，“自动”使用纯 JS。实际速度以测速为准。</p>

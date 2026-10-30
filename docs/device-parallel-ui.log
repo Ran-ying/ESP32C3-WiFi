@@ -1,0 +1,3 @@
+PASS mobile UI: escaped SSID/BSSID selection, authorization, channel bounds, switch confirm/cancel/success
+PASS real parallel Workers on insecure HTTP: TXT/numeric8/birthday, leap-day MIC, local PCAP/SSID gate, no candidate upload, range validation, pause/resume/stop
+PASS reconnect: retained-capture auto load, hung-request timeout recovery and pageshow recovery without reload

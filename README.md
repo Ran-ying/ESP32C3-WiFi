@@ -34,3 +34,11 @@ GitHub Actions 可构建默认 CH1–11 固件并保留镜像附件；私有热�
 ## 独立 PCAP 并行 HTML
 
 [standalone/wpa2-parallel.html](standalone/wpa2-parallel.html) 是可单独保存并打开的完整 HTML，不依赖 ESP32、服务器、CDN 或互联网。导入授权 PCAP/PCAPNG，选择握手，填写抓包缺少的 SSID，设置 1–256 个并行 Worker，选择数字范围或本地 TXT 后运行。默认优先浏览器原生 PBKDF2，不可用时使用纯 JS。详见 [独立页面说明](standalone/README.md)。
+
+## 设备网页并行验证与生日预设
+
+设备 HTTP 页面也支持 1–256 个并行 Worker、本地 PCAP/PCAPNG 导入、数字范围、八位生日与 TXT。生日按有效公历日期生成，含起止日期，支持 YYYYMMDD / DDMMYYYY / MMDDYYYY，不生成 1900-02-29 等无效日期。网络行左侧显示 SSID/BSSID/信道/RSSI/加密方式，右侧仅“切换”。
+
+`http://192.168.4.1` 通常没有 Web Crypto，自动模式会使用纯 JS；并行运算都在手机上。浏览器关闭不影响 ESP32 的监听/帧解析，但浏览器内的 PCAP 解析、候选生成与密码验证会停止。扫描会暂停监听，完成后需重新选择目标恢复；抓包仅 RAM，有界覆盖。
+
+两种页面共享解析器、候选源、密码学引擎与 Worker 池。修改共享代码后执行 `python3 tools/build-web-shared.py` 和 `python3 tools/build-standalone.py` 重新生成交付资源；`npm test` 会检查资源同步。

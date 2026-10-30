@@ -1,0 +1,12 @@
+2026-10-30 ESP32-C3 device-page parallel release
+App SHA256: bc01343ed71977ad808d275d7eea6c7ad73f7a614c0adb6841287ea9a2131c12
+App size: 861936 bytes
+Transfer SHA256 verified before write
+esptool verify_flash: OK (digest matched)
+Configured channels=1-13
+Wi-Fi mode=APSTA
+DHCP server=192.168.4.1
+app_main returned normally
+8-second observation: one boot
+Requested private SoftAP password active=true
+New Safari UI and live protocol regression: NOT TESTED

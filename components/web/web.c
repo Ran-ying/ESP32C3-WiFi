@@ -10,6 +10,8 @@ extern const uint8_t js_start[] asm("_binary_app_js_start"), js_end[] asm("_bina
 extern const uint8_t css_start[] asm("_binary_style_css_start"), css_end[] asm("_binary_style_css_end");
 extern const uint8_t crypto_start[] asm("_binary_crypto_js_start"), crypto_end[] asm("_binary_crypto_js_end");
 extern const uint8_t worker_start[] asm("_binary_worker_js_start"), worker_end[] asm("_binary_worker_js_end");
+extern const uint8_t parallel_start[] asm("_binary_parallel_js_start"), parallel_end[] asm("_binary_parallel_js_end");
+extern const uint8_t parallel_worker_start[] asm("_binary_parallel_worker_js_start"), parallel_worker_end[] asm("_binary_parallel_worker_js_end");
 static esp_err_t json(httpd_req_t *r,cJSON *o) {
     char *s=cJSON_PrintUnformatted(o); cJSON_Delete(o);
     if(!s)return httpd_resp_send_err(r,HTTPD_500_INTERNAL_SERVER_ERROR,"JSON allocation failed");
@@ -46,6 +48,8 @@ static esp_err_t asset(httpd_req_t *r) {
     httpd_resp_set_hdr(r,"Cache-Control","no-cache");
     httpd_resp_set_hdr(r,"X-Content-Type-Options","nosniff");
     httpd_resp_set_hdr(r,"Content-Security-Policy","default-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+    if(!strcmp(r->uri,"/parallel.js")){httpd_resp_set_type(r,"application/javascript");return httpd_resp_send(r,(const char*)parallel_start,parallel_end-parallel_start);}
+    if(!strcmp(r->uri,"/parallel-worker.js")){httpd_resp_set_type(r,"application/javascript");return httpd_resp_send(r,(const char*)parallel_worker_start,parallel_worker_end-parallel_worker_start);}
     if(!strcmp(r->uri,"/crypto.js")){httpd_resp_set_type(r,"application/javascript");return httpd_resp_send(r,(const char*)crypto_start,crypto_end-crypto_start);}
     if(!strcmp(r->uri,"/worker.js")){httpd_resp_set_type(r,"application/javascript");return httpd_resp_send(r,(const char*)worker_start,worker_end-worker_start);}
     if(!strcmp(r->uri,"/app.js")){httpd_resp_set_type(r,"application/javascript");return httpd_resp_send(r,(const char*)js_start,js_end-js_start);}
@@ -60,6 +64,7 @@ void web_start(void){
     if(server)return;
     httpd_config_t c=HTTPD_DEFAULT_CONFIG();c.stack_size=8192;c.max_uri_handlers=16;c.lru_purge_enable=true;
     ESP_ERROR_CHECK(httpd_start(&server,&c));
+    route("/parallel.js",HTTP_GET,asset);route("/parallel-worker.js",HTTP_GET,asset);
     route("/crypto.js",HTTP_GET,asset);route("/worker.js",HTTP_GET,asset);
     route("/",HTTP_GET,asset);route("/app.js",HTTP_GET,asset);route("/style.css",HTTP_GET,asset);
     route("/api/capture",HTTP_GET,capture);route("/api/capture.pcap",HTTP_GET,pcap);route("/api/handshakes.json",HTTP_GET,capture);

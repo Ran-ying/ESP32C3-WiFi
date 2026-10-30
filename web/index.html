@@ -5,12 +5,15 @@
 <section><h2>附近网络</h2><label><input id="authorized" type="checkbox"> 我确认选中的网络属于我或已获得明确授权</label><p>扫描期间暂停监听。选择目标后设备热点切换信道，需重新加入同一热点。</p><button id="scan">被动扫描网络</button><div id="networks"></div></section>
 <section id="capture"><h2>认证帧</h2><p>尚未启动监听。</p></section>
 <section id="verify"><h2>手机本地密码验证</h2><p>仅用于授权网络。字典和匹配结果留在当前浏览器会话，不上传设备。支持 WPA2-PSK / CCMP / 描述符版本 2；ASCII 密码 8–63 字节。</p>
-<button id="load">加载当前捕获</button><label>会话<select id="sessions"><option value="">无可验证数据</option></select></label>
+<button id="load">加载当前捕获</button><label>导入本地 PCAP / PCAPNG<input id="capture-file" type="file" accept=".pcap,.cap,.pcapng"></label><p id="import-status" role="status"></p><label>会话<select id="sessions"><option value="">无可验证数据</option></select></label>
+<pre id="record-info"></pre><label>SSID<input id="ssid" type="text" maxlength="64" autocomplete="off" placeholder="抓包缺少 SSID 时填入原始网络名称"></label><label><input id="ssid-hex" type="checkbox"> SSID 为原始十六进制字节</label>
 <p id="missing">先捕获 ANonce 与 M2 的 SNonce、MIC、原始 EAPOL。</p>
-<label>候选来源<select id="source"><option value="numeric8">预设：8 位纯数字</option><option value="file">本地 TXT 字典</option></select></label>
+<label>候选来源<select id="source"><option value="numeric8">预设：8 位纯数字</option><option value="birthday">预设：8 位生日</option><option value="file">本地 TXT 字典</option></select></label>
 <div id="numeric-settings"><p>按顺序生成，无需保存字典文件。完整范围含 1 亿个候选；运行后显示速度和预计剩余时间。</p><div class="range"><label>起始数字<input id="numeric-start" type="text" inputmode="numeric" maxlength="8" value="00000000" pattern="[0-9]{8}"></label><label>结束数字<input id="numeric-end" type="text" inputmode="numeric" maxlength="8" value="99999999" pattern="[0-9]{8}"></label></div></div>
+<div id="birthday-settings" hidden><p>仅生成真实公历日期，自动处理闰年。</p><div class="range"><label>起始日期<input id="birthday-start" type="date" value="1900-01-01"></label><label>结束日期<input id="birthday-end" type="date"></label></div><label>生日格式<select id="birthday-format"><option value="YYYYMMDD">YYYYMMDD（20000229）</option><option value="DDMMYYYY">DDMMYYYY（29022000）</option><option value="MMDDYYYY">MMDDYYYY（02292000）</option></select></label></div>
 <label id="file-settings" hidden>本地 TXT 字典<input id="dictionary" type="file" accept=".txt,text/plain"></label>
+<div class="range"><label>并行 Worker 数（1–256）<input id="workers" type="number" min="1" max="256" value="4" step="1"></label><label>运算引擎<select id="engine"><option value="auto">自动</option><option value="js">纯 JavaScript</option><option value="native">浏览器原生 PBKDF2</option></select></label></div><p id="hardware"></p><p>普通 HTTP 下通常使用纯 JS。字典、PCAP 和计算只在手机本地处理，不上传 ESP32。</p>
 <button id="start" disabled>开始</button><button id="pause" disabled>暂停</button><button id="stop" disabled>停止</button>
-<progress id="progress" value="0" max="100"></progress><pre id="verification" aria-live="polite">尚未开始</pre></section>
+<progress id="progress" value="0" max="100"></progress><pre id="verification" aria-live="polite">尚未开始</pre><div class="table-wrap"><table><thead><tr><th>Worker</th><th>引擎</th><th>状态</th><th>已回报</th></tr></thead><tbody id="worker-table"></tbody></table></div></section>
 <dialog id="switch-dialog" aria-labelledby="switch-title"><h2 id="switch-title">确认切换目标</h2><pre id="switch-target"></pre><p id="switch-message" role="status"></p><div><button id="switch-cancel">取消</button><button id="switch-confirm">确认切换</button><button id="switch-check" hidden>我已重新连接，检查状态</button><button id="switch-close" hidden>关闭</button></div></dialog>
-<footer>本地运行 · 无云服务 · 不发送断连或干扰报文</footer></main><script src="/crypto.js"></script><script src="/app.js"></script></body></html>
+<footer>本地运行 · 无云服务 · 不发送断连或干扰报文</footer></main><script src="/crypto.js"></script><script src="/parallel.js"></script><script src="/app.js"></script></body></html>

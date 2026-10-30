@@ -39,3 +39,7 @@ CHROME_BIN=/path/to/chrome node tests/standalone-ui.cjs
 ## 已验证结果
 
 主机解析/密码学测试与离线 Chromium 单文件测试通过，包括实际 1/4 Worker、数字和 TXT 的正误候选、暂停/恢复/停止及无网络请求。开发 VM 的 64 候选短样本（含启动）约为：JS 单 Worker 8/s、四 Worker 11/s；原生 PBKDF2 单 Worker 174/s、四 Worker 212/s。默认优先原生引擎，实际设备请按界面速度评估。测试细节见仓库 `docs/standalone-*.log`；iPhone Safari 实测仍未完成。
+
+## 八位生日
+
+增加有效公历日期预设，支持起止日期与 YYYYMMDD / DDMMYYYY / MMDDYYYY 格式。自动处理闰年，按 UTC 天划分任务，不生成无效日期；例如 1900 年没有 2 月 29 日，2000 年有。该源与 ESP32 页面共享实现。

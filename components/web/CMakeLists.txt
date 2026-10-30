@@ -1,1 +1,1 @@
-idf_component_register(SRCS "web.c" INCLUDE_DIRS "include" REQUIRES esp_http_server lab_wifi json sniffer EMBED_FILES "../../web/index.html" "../../web/app.js" "../../web/style.css" "../../web/crypto.js" "../../web/worker.js")
+idf_component_register(SRCS "web.c" INCLUDE_DIRS "include" REQUIRES esp_http_server lab_wifi json sniffer EMBED_FILES "../../web/index.html" "../../web/app.js" "../../web/style.css" "../../web/crypto.js" "../../web/worker.js" "../../web/parallel.js" "../../web/parallel-worker.js")

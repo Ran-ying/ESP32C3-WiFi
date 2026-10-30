@@ -2,7 +2,7 @@
   "name": "esp32c3-wifi-lab-tests",
   "private": true,
   "scripts": {
-    "test": "node tests/crypto.cjs && node tests/worker.cjs && node tests/standalone.cjs && python3 tools/build-standalone.py --check",
+    "test": "node tests/crypto.cjs && node tests/worker.cjs && node tests/standalone.cjs && python3 tools/build-standalone.py --check && python3 tools/build-web-shared.py --check",
     "test:ui": "node tests/ui.cjs && node tests/standalone-ui.cjs"
   },
   "devDependencies": {

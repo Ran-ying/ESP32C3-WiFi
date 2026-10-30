@@ -62,9 +62,9 @@ function checkSwitch(s,c){
 function networks(list){
  $('networks').replaceChildren();
  for(const n of list){
-  const d=document.createElement('div');d.className='network';const title=document.createElement('strong');title.textContent=n.ssid||'（隐藏 SSID：无法进行密码验证）';
+  const d=document.createElement('div');d.className='network';const info=document.createElement('div');info.className='network-info';const title=document.createElement('strong');title.textContent=n.ssid||'（隐藏 SSID：无法进行密码验证）';
   const p=document.createElement('p');p.textContent=`${n.bssid} · CH ${n.channel} · ${n.rssi} dBm · ${n.auth}`;
-  const b=document.createElement('button');b.textContent='选择并切换信道';b.disabled=n.channel>allowedMax||!!lastStatus?.busy||!!switchActive;b.onclick=()=>choose(n);d.append(title,p,b);$('networks').append(d);
+  const b=document.createElement('button');b.textContent='切换';b.disabled=n.channel>allowedMax||!!lastStatus?.busy||!!switchActive;b.onclick=()=>choose(n);info.append(title,p);d.append(info,b);$('networks').append(d);
  }
 }
 async function refresh(){
@@ -88,64 +88,85 @@ window.addEventListener('online',resumePolling);window.addEventListener('pagesho
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)resumePolling();});
 
 function renderCapture(c){
- latestCapture=c;if(!worker&&!loaded.length&&(c.sessions||[]).some(s=>s.verifiable))loadCaptured();const section=$('capture');section.replaceChildren();const h=document.createElement('h2');h.textContent='认证帧 · '+(c.listening?'监听中':'已暂停');section.append(h);
+ latestCapture=c;if(!verifying&&!parsing&&recordOrigin==='live'&&!loaded.length&&(c.sessions||[]).some(s=>s.verifiable))loadCaptured();const section=$('capture');section.replaceChildren();const h=document.createElement('h2');h.textContent='认证帧 · '+(c.listening?'监听中':'已暂停');section.append(h);
  const p=document.createElement('pre');p.textContent=`${c.security}\nCH: ${c.channel} · BSSID: ${c.bssid}\n数据帧: ${c.data_frames} · 认证帧: ${c.captured}\n队列丢失: ${c.queue_drops} · 超长丢弃: ${c.oversize}\n记录覆盖: ${c.record_overwrites} · 会话淘汰: ${c.session_evictions}\n最近认证帧（启动后微秒）: ${c.last_rx_us}`;section.append(p);
  for(const s of c.sessions||[]){const row=document.createElement('pre');row.textContent=`会话 ${s.id} · 客户端 ${s.client}\n`+[1,2,3,4].map(i=>`M${i}: ${s.mask&(1<<(i-1))?'RECEIVED':'MISSING'}`).join('\n')+`\nHandshake: ${s.state}\n${s.missing||''}`;section.append(row);}
  for(const [url,label] of [['/api/capture.pcap','导出已校验 PCAP'],['/api/handshakes.json','导出结构化数据']]){const a=document.createElement('a');a.href=url;a.textContent=label;a.className='download';a.download='';section.append(a);}
 }
 
-let worker=null,loaded=[],paused=false;
-function sourceConfig(){
- const source=$('source').value;
- if(source==='file'){const file=$('dictionary').files[0];if(!file||!file.size)throw Error('请选择非空 TXT 字典');return {source,file};}
- const start=$('numeric-start').value,end=$('numeric-end').value;
- if(!/^\d{8}$/.test(start)||!/^\d{8}$/.test(end)||Number(start)>Number(end))throw Error('请输入有效的 8 位起始与结束数字');
- return {source:'numeric8',start,end};
+let loaded=[],verifying=false,parsing=false,parser=null,recordOrigin='live',selectedAp=null;
+const verifyInputs=['load','capture-file','sessions','ssid','ssid-hex','source','dictionary','numeric-start','numeric-end','birthday-start','birthday-end','birthday-format','workers','engine'];
+function currentRecord(){
+ const r=loaded.find(x=>String(x.id)===$('sessions').value);if(!r)throw Error('请选择具备 ANonce、SNonce、M2 MIC 和原始 EAPOL 的会话');
+ if(!r.verifiable)throw Error(r.reason||r.missing||'该会话的验证材料不完整');
+ const value=$('ssid').value;let ssid_hex;
+ if($('ssid-hex').checked){if(!/^(?:[a-fA-F0-9]{2}){1,32}$/.test(value))throw Error('SSID HEX 须为 1–32 字节');ssid_hex=value.toLowerCase();}
+ else{const bytes=new TextEncoder().encode(value);if(!bytes.length||bytes.length>32)throw Error('请填写正确的 SSID（1–32 字节）');ssid_hex=WPA2.toHex(bytes);}
+ const record={...r,ssid_hex};WPA2.prepare(record);return record;
+}
+function createSource(){
+ const workers=Number($('workers').value);if(!Number.isInteger(workers)||workers<1||workers>256)throw Error('并行数须为 1–256 的整数');
+ if($('source').value==='numeric8')return new SOURCES.NumericSource($('numeric-start').value,$('numeric-end').value,workers);
+ if($('source').value==='birthday')return new SOURCES.BirthdaySource($('birthday-start').value,$('birthday-end').value,workers,$('birthday-format').value);
+ return new SOURCES.FileSource($('dictionary').files[0]);
+}
+function checkStart(){
+ let valid=false,message='';
+ try{currentRecord();createSource();if(!$('authorized').checked)throw Error('请先确认网络授权');valid=true;message='材料可验证，候选将在手机本地并行处理。';}
+ catch(e){message=e.message;}
+ $('missing').textContent=message;$('start').disabled=!valid||verifying||parsing;return valid;
 }
 function sourceChanged(){
- const numeric=$('source').value==='numeric8';$('numeric-settings').hidden=!numeric;$('file-settings').hidden=numeric;checkStart();
+ $('numeric-settings').hidden=$('source').value!=='numeric8';$('birthday-settings').hidden=$('source').value!=='birthday';$('file-settings').hidden=$('source').value!=='file';checkStart();
 }
-function duration(seconds){
- if(seconds===null||!Number.isFinite(seconds))return '等待测速';
- const n=Math.max(0,Math.ceil(seconds));if(n<60)return `${n} 秒`;if(n<3600)return `${Math.ceil(n/60)} 分钟`;if(n<86400)return `${(n/3600).toFixed(1)} 小时`;return `${(n/86400).toFixed(1)} 天`;
-}
-
-function checkStart(){
+function recordSelected(fill=false){
  const r=loaded.find(x=>String(x.id)===$('sessions').value);
- let valid=false;let message='请选择具备 ANonce、SNonce、M2 MIC 和原始 EAPOL 的会话';
- if(r){try{WPA2.prepare(r);valid=true;message='材料可验证；四条消息齐全与 MIC 匹配是不同的判断。';}catch(e){message=e.message;}}
- try{sourceConfig();}catch(e){valid=false;if(r)message=e.message;}
- $('missing').textContent=message;$('start').disabled=!!worker||!valid||!$('authorized').checked;
- return r;
+ if(r){
+  if(fill){
+   if(r.ssid_hex){try{const text=new TextDecoder('utf-8',{fatal:true}).decode(WPA2.hex(r.ssid_hex));if(/[\u0000-\u001f\u007f]/.test(text))throw Error('使用 HEX');$('ssid').value=text;$('ssid-hex').checked=false;}catch{$('ssid').value=r.ssid_hex;$('ssid-hex').checked=true;}}
+   else if(selectedAp!==r.ap){$('ssid').value='';$('ssid-hex').checked=false;}selectedAp=r.ap;
+  }
+  $('record-info').textContent=`来源: ${recordOrigin==='file'?'本地 PCAP':'设备当前捕获'}\nAP: ${r.ap} · 客户端: ${r.client}\n`+[1,2,3,4].map(i=>`M${i}: ${r.mask&(1<<(i-1))?'RECEIVED':'MISSING'}`).join(' · ')+`\n${r.state||(r.complete?'COMPLETE':r.verifiable?'VERIFIABLE':'CAPTURED')}`;
+ }else $('record-info').textContent='尚无可验证会话';checkStart();
 }
-function finishWorker(){if(worker)worker.terminate();worker=null;paused=false;$('pause').textContent='暂停';$('pause').disabled=true;$('stop').disabled=true;$('load').disabled=false;$('sessions').disabled=false;$('dictionary').disabled=false;$('source').disabled=false;$('numeric-start').disabled=false;$('numeric-end').disabled=false;checkStart();}
+function populateRecords(){
+ $('sessions').replaceChildren();
+ for(const r of loaded){const o=document.createElement('option');o.value=r.id;o.textContent=`会话 ${r.id} · ${r.client} · ${r.state||(r.complete?'COMPLETE':r.verifiable?'VERIFIABLE':'材料不足')}`;$('sessions').append(o);}
+ if(!loaded.length){const o=document.createElement('option');o.value='';o.textContent='无可验证会话';$('sessions').append(o);}
+ recordSelected(true);
+}
 function loadCaptured(){
- loaded=[];$('sessions').replaceChildren();
- if(latestCapture){for(const s of latestCapture.sessions||[]){if(s.verifiable)loaded.push({...s,ssid_hex:latestCapture.ssid_hex,generation:latestCapture.generation});}}
- loaded.sort((a,b)=>(b.last_us||0)-(a.last_us||0));
- for(const r of loaded){const o=document.createElement('option');o.value=r.id;o.textContent=`会话 ${r.id} · ${r.client} · ${r.state}`;$('sessions').append(o);}
- if(!loaded.length){const o=document.createElement('option');o.value='';o.textContent='无可验证会话';$('sessions').append(o);$('missing').textContent=(latestCapture?.sessions||[]).map(s=>s.missing).filter(Boolean).join('；')||'尚未捕获所需认证帧';$('start').disabled=true;return;}
- checkStart();
+ if(parser){parser.terminate();parser=null;parsing=false;}
+ recordOrigin='live';loaded=[];$('import-status').textContent='';
+ if(latestCapture)for(const s of latestCapture.sessions||[])if(s.verifiable)loaded.push({...s,ssid_hex:latestCapture.ssid_hex,generation:latestCapture.generation});
+ loaded.sort((a,b)=>(b.last_us||0)-(a.last_us||0));populateRecords();
+ if(!loaded.length)$('missing').textContent=(latestCapture?.sessions||[]).map(s=>s.missing).filter(Boolean).join('；')||'尚未捕获所需认证帧';
+}
+$('capture-file').onchange=()=>{
+ const file=$('capture-file').files[0];if(!file)return;if(parser)parser.terminate();
+ recordOrigin='file';loaded=[];selectedAp=null;$('ssid').value='';parsing=true;populateRecords();$('import-status').textContent='正在手机本地解析 PCAP…';
+ const w=new Worker('/parallel-worker.js');parser=w;
+ const fail=message=>{if(parser!==w)return;parsing=false;w.terminate();parser=null;$('import-status').textContent=`导入失败：${message}`;checkStart();};
+ w.onerror=e=>fail(e.message||'解析 Worker 失败');w.onmessage=e=>{
+  if(parser!==w)return;const m=e.data;if(m.type==='error'){fail(m.message);return;}
+  if(m.type==='importProgress')$('import-status').textContent=`本地解析 ${(m.progress*100).toFixed(1)}%`;
+  if(m.type==='parsed'){loaded=m.result.sessions.sort((a,b)=>Number(b.complete)-Number(a.complete)||Number(b.verifiable)-Number(a.verifiable)||b.id-a.id);parsing=false;w.terminate();parser=null;populateRecords();$('import-status').textContent=`已导入 ${m.result.stats.eapol} 条认证消息、${loaded.length} 个会话；文件未上传。`;}
+ };w.postMessage({type:'parse',file});
 };
-$('load').onclick=loadCaptured;
-$('sessions').onchange=checkStart;$('dictionary').onchange=checkStart;$('authorized').onchange=checkStart;
-$('source').onchange=sourceChanged;$('numeric-start').oninput=checkStart;$('numeric-end').oninput=checkStart;
-$('start').onclick=()=>{
- const r=checkStart();if(!r||worker)return;
- if(!$('authorized').checked){notice('请先确认这是自己的授权测试网络。');return;}
- try{
-  WPA2.prepare(r);const config=sourceConfig();worker=new Worker('/worker.js');$('start').disabled=true;$('pause').disabled=false;$('stop').disabled=false;$('load').disabled=true;$('sessions').disabled=true;$('dictionary').disabled=true;$('source').disabled=true;$('numeric-start').disabled=true;$('numeric-end').disabled=true;$('progress').value=0;
-  $('verification').textContent=`本地验证中 · 会话 ${r.id} · ${r.ap}`;
-  worker.onerror=e=>{$('verification').textContent='Worker 错误: '+e.message;finishWorker();};
-  worker.onmessage=e=>{const m=e.data;if(m.type==='error'){$('verification').textContent=m.message;finishWorker();return;}
-   const percent=m.total?Math.min(100,m.processed/m.total*100):0;$('progress').value=percent;
-   $('verification').textContent=`已验证: ${m.tested} · 跳过无效行: ${m.skipped}\n速度: ${m.rate.toFixed(2)} 候选/秒\n${m.unit==='candidates'?'候选进度':'字典处理'}: ${percent.toFixed(4)}% · ${m.total.toLocaleString()} ${m.unit==='candidates'?'个候选':'字节'}\n预计剩余: ${duration(m.etaSeconds)}`+(m.type==='found'?`\n匹配密码: ${m.password}`:m.type==='done'?'\n完成，未找到匹配':m.type==='paused'?'\n已暂停':'');
-   if(m.type==='found'||m.type==='done')finishWorker();
-  };
-  worker.postMessage({type:'start',record:r,...config});
- }catch(e){$('verification').textContent=e.message;finishWorker();}
-};
-$('pause').onclick=()=>{if(!worker)return;paused=!paused;worker.postMessage({type:paused?'pause':'resume'});$('pause').textContent=paused?'继续':'暂停';};
-$('stop').onclick=()=>{finishWorker();$('verification').textContent='已停止；可重新开始。';};
-
-sourceChanged();refresh();
+function duration(seconds){if(seconds===null||!Number.isFinite(seconds))return '等待测速';if(seconds<60)return `${Math.ceil(seconds)} 秒`;if(seconds<3600)return `${(seconds/60).toFixed(1)} 分钟`;if(seconds<86400)return `${(seconds/3600).toFixed(1)} 小时`;return `${(seconds/86400).toFixed(1)} 天`;}
+function verificationControls(lock){verifying=lock;for(const id of verifyInputs)$(id).disabled=lock;$('pause').disabled=!lock;$('stop').disabled=!lock;checkStart();}
+function renderVerification(s){
+ $('progress').value=s.percent;const phase=s.phase==='found'?`匹配密码: ${s.password}`:s.phase==='done'?'完成，未找到匹配':s.phase==='error'?`运行失败: ${s.error}`:s.phase==='stopped'?'已停止；可重新开始。':s.paused?(s.allPaused?'已暂停':'正在暂停…'):'并行验证中';
+ $('verification').textContent=`已验证: ${s.tested} · 跳过无效行: ${s.skipped}\n速度: ${s.rate.toFixed(2)} 候选/秒\n${s.kind==='file'?'字典处理':'候选进度'}: ${s.percent.toFixed(4)}% · ${s.total.toLocaleString()} ${s.kind==='file'?'字节':'个候选'}\n预计剩余: ${duration(['found','done'].includes(s.phase)?0:s.eta)}\nWorker: ${s.slots.length}\n${phase}`;
+ $('worker-table').replaceChildren();for(const slot of s.slots){const tr=document.createElement('tr');for(const value of [slot.id,slot.engine,slot.state,slot.total]){const td=document.createElement('td');td.textContent=value;tr.append(td);}$('worker-table').append(tr);}
+ $('pause').textContent=s.paused?'继续':'暂停';if(s.phase!=='running'&&verifying)verificationControls(false);
+}
+const pool=new ParallelPool('/parallel-worker.js',renderVerification);
+$('start').onclick=()=>{if(!checkStart())return;try{const record=currentRecord(),source=createSource(),workers=Number($('workers').value),engine=$('engine').value;verificationControls(true);pool.start({record,source,workers,engine});}catch(e){verificationControls(false);$('verification').textContent=e.message;}};
+$('pause').onclick=()=>{if(pool.run?.paused)pool.resume();else pool.pause();};$('stop').onclick=()=>pool.stop();
+$('load').onclick=loadCaptured;$('sessions').onchange=()=>recordSelected(true);$('source').onchange=sourceChanged;
+for(const id of ['ssid','ssid-hex','dictionary','numeric-start','numeric-end','birthday-start','birthday-end','birthday-format','workers','engine','authorized'])$(id).addEventListener('input',checkStart);
+const cores=navigator.hardwareConcurrency;$('workers').value=Math.min(256,Math.max(1,cores||4));$('hardware').textContent=`浏览器报告逻辑核数：${cores||'未知'}；可自行设置 1–256 个 Worker。`;
+$('birthday-end').value=`${new Date().getFullYear()}-12-31`;
+setInterval(()=>{if(pool.run&&!pool.run.cancelled)renderVerification(pool.snapshot());},250);
+window.addEventListener('beforeunload',()=>{pool.stop();if(parser)parser.terminate();});sourceChanged();refresh();

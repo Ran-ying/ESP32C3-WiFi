@@ -19,6 +19,6 @@ def build_fixture(password):
     return fixture
 
 if __name__=='__main__':
-    for name,password in [('wpa2-synthetic.json','Lab-password-123'),('wpa2-numeric.json','00000002')]:
+    for name,password in [('wpa2-synthetic.json','Lab-password-123'),('wpa2-numeric.json','00000002'),('wpa2-birthday.json','20000229')]:
         (root/'fixtures'/name).write_text(json.dumps(build_fixture(password),indent=2)+'\n')
     print('Generated synthetic Python hashlib/hmac reference fixtures')

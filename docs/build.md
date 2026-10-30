@@ -41,3 +41,12 @@ UI 测试使用临时浏览器上下文，将 http://192.168.4.1 的 API 全部�
 menuconfig → Wi-Fi laboratory → Maximum permitted 2.4 GHz channel 设置安装地允许的上限，默认 11，本次俄罗斯部署为 13。不需要用户填写国家代码。内部使用中性驱动代码 01、显式 1–上限、MANUAL，并通过 get_country 检查实际范围；目标切换使用扫描得到的信道。CH14 与 5 GHz 不在本项目支持范围。
 
 实测发现 ESP-IDF 5.4.2 的两种 country API 均拒绝 RU 字符串，早期 RU 配置曾导致启动检查失败；已取消国家选项并使用上述显式范围。驱动内部参数仍然存在，不能理解为关闭射频法规限制。
+
+共享浏览器资源更新后，构建固件前执行：
+
+```sh
+python3 tools/build-web-shared.py
+python3 tools/build-standalone.py
+```
+
+生成的两个 `web/parallel*.js` 已纳入仓库并由 ESP-IDF 静态嵌入，运行时不需要 Python、Node 或外部资源。

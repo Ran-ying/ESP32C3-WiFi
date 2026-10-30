@@ -5,7 +5,7 @@ class Pool{
  start({record,source,workers,engine}){
   if(this.run&&!this.run.cancelled)throw Error('任务正在运行');
   if(!Number.isInteger(workers)||workers<1||workers>256)throw Error('并行数须为 1–256 的整数');
-  const n=source.kind==='numeric'?Math.min(workers,source.total):workers;
+  const n=source.kind!=='file'?Math.min(workers,source.total):workers;
   const r={source,slots:[],completed:0,started:performance.now(),paused:false,pauseMs:0,cancelled:false,eof:false,seq:0,chain:Promise.resolve(),frontier:0,frontierId:1,finished:new Map(),phase:'running',password:null,error:null};this.run=r;
   try{
    for(let i=0;i<n;i++){
@@ -54,9 +54,9 @@ class Pool{
  }
  snapshot(r=this.run){
   if(!r)return null;const now=r.ended||performance.now(),elapsed=Math.max(.001,(now-r.started-r.pauseMs-(r.paused?now-r.pauseStart:0))/1000);
-  const tested=r.completed+r.slots.reduce((n,s)=>n+(s.active?.tested||0),0),processed=r.source.kind==='numeric'?tested:r.frontier,total=r.source.total,rate=tested/elapsed;
-  return {phase:r.phase,paused:r.paused,allPaused:r.slots.every(s=>s.paused),tested,skipped:r.source.skipped,processed,total,rate,elapsed,percent:Math.min(100,processed/total*100),eta:r.source.kind==='numeric'&&rate>0?(total-tested)/rate:null,password:r.password,error:r.error,kind:r.source.kind,
-   slots:r.slots.map(s=>({id:s.id,total:s.total+(s.active?.tested||0),engine:s.engine,state:r.cancelled?'结束':r.paused?(s.paused?'已暂停':'暂停中'):s.active?'计算中':s.assigning?'分配中':s.ready?'等待':'初始化',range:s.active?(s.active.candidates?`TXT 批次 ${s.active.id}`:`${String(s.active.start).padStart(8,'0')}–${String(s.active.end).padStart(8,'0')}`):'—'}))};
+  const tested=r.completed+r.slots.reduce((n,s)=>n+(s.active?.tested||0),0),processed=r.source.kind!=='file'?tested:r.frontier,total=r.source.total,rate=tested/elapsed;
+  return {phase:r.phase,paused:r.paused,allPaused:r.slots.every(s=>s.paused),tested,skipped:r.source.skipped,processed,total,rate,elapsed,percent:Math.min(100,processed/total*100),eta:r.source.kind!=='file'&&rate>0?(total-tested)/rate:null,password:r.password,error:r.error,kind:r.source.kind,
+   slots:r.slots.map(s=>({id:s.id,total:s.total+(s.active?.tested||0),engine:s.engine,state:r.cancelled?'结束':r.paused?(s.paused?'已暂停':'暂停中'):s.active?'计算中':s.assigning?'分配中':s.ready?'等待':'初始化',range:s.active?(s.active.label||(s.active.candidates?`TXT 批次 ${s.active.id}`:`${String(s.active.start).padStart(8,'0')}–${String(s.active.end).padStart(8,'0')}`)):'—'}))};
  }
  emit(r){this.onUpdate(this.snapshot(r));}
 }
