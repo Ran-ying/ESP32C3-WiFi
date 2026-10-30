@@ -1,0 +1,8 @@
+menu "Wi-Fi laboratory"
+config LAB_AP_SSID
+    string "Device SoftAP SSID"
+    default "ESP32C3-Auditor"
+config LAB_AP_PASSWORD
+    string "SoftAP password (8-63 printable ASCII; empty generates a private password in NVS)"
+    default ""
+endmenu

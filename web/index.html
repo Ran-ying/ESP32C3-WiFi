@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Wi-Fi 实验台</title><link rel="stylesheet" href="/style.css"></head>
+<body><main><header><small>ESP32-C3 · PASSIVE LAB</small><h1>Wi-Fi 实验台</h1><p>只监听自己拥有或明确授权的 2.4 GHz 测试网络。</p></header>
+<section><h2>设备</h2><pre id="status">正在连接…</pre><p id="notice" role="status"></p></section>
+<section><h2>附近网络</h2><label><input id="authorized" type="checkbox"> 我确认选中的网络属于我或已获得明确授权</label><p>扫描期间暂停监听。选择目标后设备热点切换信道，需重新加入同一热点。</p><button id="scan">被动扫描网络</button><div id="networks"></div></section>
+<section id="capture"><h2>认证帧</h2><p>尚未启动监听。</p></section>
+<section id="verify" hidden></section>
+<footer>本地运行 · 无云服务 · 不发送断连或干扰报文</footer></main><script src="/app.js"></script></body></html>

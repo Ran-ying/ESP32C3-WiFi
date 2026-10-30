@@ -1,0 +1,10 @@
+build/
+sdkconfig
+sdkconfig.old
+sdkconfig.local
+managed_components/
+.env
+*.pcap
+*.pcapng
+__pycache__/
+.private/
