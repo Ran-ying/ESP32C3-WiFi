@@ -19,7 +19,7 @@
 - ESP-IDF v5.4.2 构建：PASS，app 0xc50a0 字节，应用分区剩余 23%。
 - `tests/run-protocol.sh`：PASS，GCC 主机 AddressSanitizer + UndefinedBehaviorSanitizer；DS 方向、QoS/HT、所有截断长度、64 位计数器、重传、乱序、非完整可验证会话、Nonce 冲突、多客户端、版本不支持、会话淘汰、导出拒绝非法帧，以及 20,000 条确定性随机输入。无堆分配的协议核心测试禁用 LeakSanitizer（环境 ptrace 限制），保留地址和未定义行为检查。
 - M1 网页 JS 语法回归：PASS。
-- 实际授权网络 EAPOL、iPhone 实时展示、PCAP 空口对照：NOT TESTED。
+- 初期实机项目未测试；后续用户已确认真实授权网络握手捕获，见下方现场记录。PCAP 空口对照仍 NOT TESTED。
 
 ## M3 与最终回归
 
@@ -32,7 +32,7 @@
 - M2 固件烧录：PASS，esptool 对各镜像 hash 校验成功；串口实测正常启动 APSTA、4MB、192.168.4.1 DHCP，无启动崩溃。原始串口日志含热点密码与 MAC，只保存在私有目录，不提交。
 - 实机发现：ESP-IDF v5.4.2 拒绝 RU 字符串，初版地区配置启动检查失败。已取消国家选择，改用中性代码 01 + 显式 MANUAL 1–13；修正后实机读回 1–13、APSTA/DHCP 正常，8 秒观察窗口仅一次启动，用户指定热点密码生效。该结果不表示 CH13 切换已经测试。
 - 最终简化界面版本：PASS，esptool 写入并校验 hash；串口读回 Configured channels=1-13、APSTA、192.168.4.1 DHCP、app_main 正常返回，8 秒观察窗口一次启动、用户指定密码生效。仅这些实际观察项为 PASS。
-- iPhone Safari 中的实机 CH1/6/11 切换、不重启、实际授权网络 EAPOL、实网已知密码字典验证：NOT TESTED，须按 hardware-test.md 人工执行。路由器由用户固定信道；没有将该操作算作设备测试通过。
+- 现场验收按下方用户反馈逐项更新；CH11、不重启、PCAP 独立对照与实网已知密码验证仍 NOT TESTED。路由器由用户固定信道，没有将该操作算作设备测试通过。
 - GitHub Actions：首次运行已完成，两个 job 均 SUCCESS，见下方记录。
 
 本记录中的协议/密码学夹具都是合成数据，不含真实网络握手、密码或用户测试路由器标识。
@@ -41,3 +41,6 @@
 
 - 2026-10-30：用户确认新版热点可加入，iPhone Safari 能打开网页；正在扫描和选择自己的测试网络。仅首屏可访问记为 PASS，选择目标、信道切换、监听与密码验证仍待反馈。
 - 首次 [GitHub Actions 运行](https://github.com/Ran-ying/ESP32C3-WiFi/actions/runs/41109404973)：`protocol-and-browser` 与 `firmware` 两个 job 均 SUCCESS。CI 在官方 v5.4.2 容器从源码构建默认 CH1–11 固件，并运行协议、密码学、Worker 与 Chromium HTTP UI 测试。
+
+- 2026-10-30，用户确认 CH6 切换成功。页面信息恢复后需要手动刷新；已记录轮询恢复问题与切换弹窗需求，按用户要求先完成功能测试，再处理交互。启动标识/连续运行时间未确认，不能据此判定“不重启”通过。
+- 2026-10-30，用户报告两个客户端、共 8 条认证帧；随后确认两个客户端的 M1/M2/M3/M4 均 RECEIVED，状态 COMPLETE。授权网络的被动 EAPOL 捕获与页面握手展示记为用户实测 PASS；尚不等于 MIC/密码验证通过。未保存或提交真实握手、MAC、SSID、密码。
