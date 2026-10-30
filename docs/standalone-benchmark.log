@@ -1,0 +1,5 @@
+Browser: 156.0.8078.47 Candidates:64, includes Worker startup, developer VM; not an iPhone benchmark
+js 1 Workers {"tested":64,"rate":7.984031936127744,"elapsed":8.016,"perWorker":[64]}
+js 4 Workers {"tested":64,"rate":11.39114338606571,"elapsed":5.618399999976158,"perWorker":[16,16,16,16]}
+native 1 Workers {"tested":64,"rate":173.91304347826087,"elapsed":0.368,"perWorker":[64]}
+native 4 Workers {"tested":64,"rate":212.20159157903555,"elapsed":0.30159999990463254,"perWorker":[16,16,16,16]}

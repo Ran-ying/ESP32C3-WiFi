@@ -55,3 +55,12 @@
 - 新版烧录/启动：PASS。最终 app SHA256 `2ec21fe8825dc10e7de279eacbbaf2064d67583ea29975ebfbb186c13449b0ea`，828112 字节；esptool verify_flash 对整个应用镜像报告 digest matched。实测 APSTA、CH1–13、192.168.4.1 DHCP、app_main 正常返回，8 秒观察窗口一次启动，用户指定私有密码生效。
 - 交付中首次烧录取到了上一份构建，最终镜像校验发现版本不一致；已使用完整传输并通过 SHA256 的文件重新烧录，随后 verify_flash 成功。没有将首次写入当作最终校验通过。
 - iPhone Safari 新弹窗、数字预设与自动恢复：NOT TESTED。之前 CH6 与完整握手的用户报告属于上个固件版本，不能当成新版新增功能实测。
+
+## 独立 PCAP 并行 HTML（2026-10-30）
+
+- 文件 `standalone/wpa2-parallel.html`，所有源码、CSS、密码学、解析器与 Blob Worker 内嵌；构建检查确保交付文件与源码一致。固件源码与镜像不变，本次没有烧录硬件。
+- `npm test`：PASS，包括原有密码学与数字 Worker 回归、新 PCAP/PCAPNG 解析、候选划分、原生/JS 验证与无 WebCrypto 回退；详见 standalone-unit.log。
+- 解析夹具覆盖 PCAP 大小端、微秒/纳秒、DLT105/127、PCAPNG EPB/SPB/大小端/多 section/未知块、QoS/HT/radiotap 扩展与 padding、重传、缺失 SSID、冲突、算法不支持和损坏长度。文件没有结尾换行时必须正确结束，不重复读取末尾缓冲。
+- Chromium `file://` + offline context：PASS，真实 1/4 Worker 运行、64 候选全部覆盖、实际 MIC 匹配、TXT/数字、暂停/继续/停止、SSID/Nonce 缺失禁用，以及零 HTTP 请求。详见 standalone-ui.log。
+- 开发 VM Chromium 156.0.8078.47 小样本测速，64 个错误候选、含 Worker 启动开销：JS 1 Worker 约 8.0/s，4 Worker 约 11.4/s；原生 PBKDF2 1 Worker 约 173.9/s，4 Worker 约 212.2/s。仅是这台 VM 的短样本，不表示 iPhone 性能或线性加速；详见 standalone-benchmark.log。首次 512 候选纯 JS 样本超过 60 秒测试超时，缩小到 64 候选后四种配置均完整结束。
+- 真实 iPhone Safari、本用户导出的 PCAP 与实际密码：NOT TESTED。使用的所有 PCAP 测试数据来自合成夹具，不保存真实标识或密码。

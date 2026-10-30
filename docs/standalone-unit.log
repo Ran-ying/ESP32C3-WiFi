@@ -1,0 +1,10 @@
+
+> test
+> node tests/crypto.cjs && node tests/worker.cjs && node tests/standalone.cjs && python3 tools/build-standalone.py --check
+
+PASS SHA1, RFC2202 HMAC, RFC6070 PBKDF2, WPA PMK, OpenSSL boundaries, Python PMK/PTK/MIC fixture, correct/wrong candidates, malformed input
+PASS numeric8: real MIC, zero padding, inclusive bounds, progress, pause/resume, invalid ranges
+PASS Worker without WebCrypto: 64KiB boundaries, BOM/CRLF/EOF, long/invalid lines, correct/wrong candidates, pause/resume, rejected unsupported handshake
+PASS standalone parser: PCAP endian/micro/nano/raw/radiotap, PCAPNG EPB/SPB/endian/sections, QoS/HT/padding, retransmits, missing SSID, conflicts, unsupported and corrupt input
+PASS sources/engine: disjoint numeric batches, last value, streaming TXT, JS/native MIC and HTTP fallback
+PASS standalone HTML matches its sources

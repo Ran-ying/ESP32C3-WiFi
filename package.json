@@ -2,8 +2,10 @@
   "name": "esp32c3-wifi-lab-tests",
   "private": true,
   "scripts": {
-    "test": "node tests/crypto.cjs && node tests/worker.cjs",
-    "test:ui": "node tests/ui.cjs"
+    "test": "node tests/crypto.cjs && node tests/worker.cjs && node tests/standalone.cjs && python3 tools/build-standalone.py --check",
+    "test:ui": "node tests/ui.cjs && node tests/standalone-ui.cjs"
   },
-  "devDependencies": { "playwright": "1.64.1" }
+  "devDependencies": {
+    "playwright": "1.64.1"
+  }
 }
