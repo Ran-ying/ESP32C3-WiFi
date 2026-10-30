@@ -7,4 +7,5 @@ app_main returned normally
 Requested private AP password active=true
 esptool flash hash verified
 App SHA256=7e5a2c557127bb1ff3b7ef5fa6a462f1ab6e0c88d30ef4bbb456be4858961af4
-CH1/6/11 switching, iPhone Safari, live EAPOL and actual-password verification: NOT TESTED
+iPhone Safari first-page access: user confirmed PASS
+CH1/6/11 switching, live EAPOL and actual-password verification: NOT TESTED

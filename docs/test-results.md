@@ -32,7 +32,12 @@
 - M2 固件烧录：PASS，esptool 对各镜像 hash 校验成功；串口实测正常启动 APSTA、4MB、192.168.4.1 DHCP，无启动崩溃。原始串口日志含热点密码与 MAC，只保存在私有目录，不提交。
 - 实机发现：ESP-IDF v5.4.2 拒绝 RU 字符串，初版地区配置启动检查失败。已取消国家选择，改用中性代码 01 + 显式 MANUAL 1–13；修正后实机读回 1–13、APSTA/DHCP 正常，8 秒观察窗口仅一次启动，用户指定热点密码生效。该结果不表示 CH13 切换已经测试。
 - 最终简化界面版本：PASS，esptool 写入并校验 hash；串口读回 Configured channels=1-13、APSTA、192.168.4.1 DHCP、app_main 正常返回，8 秒观察窗口一次启动、用户指定密码生效。仅这些实际观察项为 PASS。
-- iPhone Safari、实机 CH1/6/11 切换、不重启、实际授权网络 EAPOL、实网已知密码字典验证：NOT TESTED，须按 hardware-test.md 人工执行。路由器由用户固定信道；没有将该操作算作设备测试通过。
-- GitHub Actions：已配置，尚未执行，不据此宣称 PASS。
+- iPhone Safari 中的实机 CH1/6/11 切换、不重启、实际授权网络 EAPOL、实网已知密码字典验证：NOT TESTED，须按 hardware-test.md 人工执行。路由器由用户固定信道；没有将该操作算作设备测试通过。
+- GitHub Actions：首次运行已完成，两个 job 均 SUCCESS，见下方记录。
 
 本记录中的协议/密码学夹具都是合成数据，不含真实网络握手、密码或用户测试路由器标识。
+
+## 现场验收进展（用户反馈）
+
+- 2026-10-30：用户确认新版热点可加入，iPhone Safari 能打开网页；正在扫描和选择自己的测试网络。仅首屏可访问记为 PASS，选择目标、信道切换、监听与密码验证仍待反馈。
+- 首次 [GitHub Actions 运行](https://github.com/Ran-ying/ESP32C3-WiFi/actions/runs/41109404973)：`protocol-and-browser` 与 `firmware` 两个 job 均 SUCCESS。CI 在官方 v5.4.2 容器从源码构建默认 CH1–11 固件，并运行协议、密码学、Worker 与 Chromium HTTP UI 测试。
