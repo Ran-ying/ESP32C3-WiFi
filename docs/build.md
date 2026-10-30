@@ -24,3 +24,20 @@ idf.py -p <实际C3端口> flash monitor
 本开发机独立环境位于 `/root/esp-idf-c3-v5.4.2` 与 `/root/.espressif-c3`；不改动 ESP32-flash 仓库。
 
 官方 API 依据：https://docs.espressif.com/projects/esp-idf/en/v5.4.2/esp32c3/api-reference/network/esp_wifi.html 。切换流程先结束扫描，再停止 Wi-Fi，设置 AP 配置的 channel 后启动；不在扫描、AP 客户端连接或 STA 连接状态中调用 set_channel。STA 从不调用 connect。
+
+## 主机与浏览器测试
+
+```sh
+bash tests/run-protocol.sh     # C11 + ASan/UBSan；协议核心无堆分配
+node tests/crypto.cjs
+node tests/worker.cjs
+npm install                   # 仅开发测试依赖，不是设备运行依赖
+npx playwright install chromium  # 或设置 CHROME_BIN 使用现有 Chrome
+CHROME_BIN=/path/to/chrome npm run test:ui
+```
+
+UI 测试使用临时浏览器上下文，将 http://192.168.4.1 的 API 全部替换为合成数据；不连接或捕获实际网络，也不访问日常 Chrome profile。测试真实 Worker 与非安全 HTTP 页面，不能代替 iPhone Safari 实测。
+
+menuconfig → Wi-Fi laboratory → Maximum permitted 2.4 GHz channel 设置安装地允许的上限，默认 11，本次俄罗斯部署为 13。不需要用户填写国家代码。内部使用中性驱动代码 01、显式 1–上限、MANUAL，并通过 get_country 检查实际范围；目标切换使用扫描得到的信道。CH14 与 5 GHz 不在本项目支持范围。
+
+实测发现 ESP-IDF 5.4.2 的两种 country API 均拒绝 RU 字符串，早期 RU 配置曾导致启动检查失败；已取消国家选项并使用上述显式范围。驱动内部参数仍然存在，不能理解为关闭射频法规限制。

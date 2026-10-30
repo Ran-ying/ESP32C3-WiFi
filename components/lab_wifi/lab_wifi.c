@@ -5,6 +5,7 @@
 #include "esp_netif.h"
 #include "esp_random.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "nvs.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -17,8 +18,10 @@ static SemaphoreHandle_t lock;
 static QueueHandle_t jobs;
 static wifi_ap_record_t aps[MAX_AP];
 static uint16_t count;
+static wifi_country_t country;
 static lab_target_t target;
 static bool busy;
+static uint32_t boot_id;
 static const char *phase = "IDLE";
 static esp_err_t last_error;
 static void (*pause_web)(void), (*resume_web)(void);
@@ -80,14 +83,21 @@ static void controller(void *arg) {
 void lab_wifi_hooks(void (*p)(void),void (*r)(void)) { pause_web=p; resume_web=r; }
 void lab_wifi_capture_hooks(void (*p)(void),void (*r)(const lab_target_t *)) { stop_capture=p; start_capture=r; }
 void lab_wifi_init(void) {
+    boot_id=esp_random();
     lock=xSemaphoreCreateMutex(); jobs=xQueueCreate(1,sizeof(job_t)); assert(lock&&jobs);
     ESP_ERROR_CHECK(esp_netif_init()); ESP_ERROR_CHECK(esp_event_loop_create_default());
     assert(esp_netif_create_default_wifi_ap()); assert(esp_netif_create_default_wifi_sta());
     wifi_init_config_t init=WIFI_INIT_CONFIG_DEFAULT(); ESP_ERROR_CHECK(esp_wifi_init(&init));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
-    wifi_country_t country={.cc="01",.schan=1,.nchan=11,.policy=WIFI_COUNTRY_POLICY_MANUAL};
+    /* Neutral driver code, explicit permitted range. No country lookup.
+       IDF 5.4.2 hardware tests verified 01 + MANUAL + channels 1-13. */
+    country=(wifi_country_t){.cc="01",.schan=1,.nchan=CONFIG_LAB_CHANNEL_MAX,
+                             .max_tx_power=20,.policy=WIFI_COUNTRY_POLICY_MANUAL};
     ESP_ERROR_CHECK(esp_wifi_set_country(&country));
+    ESP_ERROR_CHECK(esp_wifi_get_country(&country));
+    assert(country.schan==1 && country.nchan==CONFIG_LAB_CHANNEL_MAX);
+    ESP_LOGI("lab","Configured channels=%u-%u",country.schan,country.schan+country.nchan-1);
     const char *ssid=CONFIG_LAB_AP_SSID;
     assert(strlen(ssid)>0 && strlen(ssid)<=32);
     memcpy(ap.ap.ssid,ssid,strlen(ssid)); ap.ap.ssid_len=strlen(ssid);
@@ -127,7 +137,7 @@ esp_err_t lab_wifi_select(const char *bssid,bool authorized) {
     job_t j={0};
     for(int i=0;i<count;i++) {
         char m[18]; macstr(aps[i].bssid,m);
-        if(strcmp(m,bssid)==0 && aps[i].primary>=1 && aps[i].primary<=11) {
+        if(strcmp(m,bssid)==0 && aps[i].primary>=country.schan && aps[i].primary<country.schan+country.nchan) {
             memcpy(j.target.bssid,aps[i].bssid,6); j.target.ssid_len=strnlen((char*)aps[i].ssid,32);
             memcpy(j.target.ssid,aps[i].ssid,j.target.ssid_len);
             j.target.channel=aps[i].primary; j.target.auth=aps[i].authmode;
@@ -141,6 +151,9 @@ esp_err_t lab_wifi_select(const char *bssid,bool authorized) {
 cJSON *lab_wifi_status(void) {
     uint8_t ch=0; wifi_second_chan_t s; esp_err_t e=esp_wifi_get_channel(&ch,&s);
     cJSON *o=cJSON_CreateObject(); xSemaphoreTake(lock,portMAX_DELAY);
+    cJSON_AddNumberToObject(o,"max_channel",country.schan+country.nchan-1);
+    cJSON_AddNumberToObject(o,"uptime_ms",esp_timer_get_time()/1000);
+    cJSON_AddNumberToObject(o,"boot_id",boot_id);
     cJSON_AddStringToObject(o,"phase",phase); cJSON_AddBoolToObject(o,"busy",busy);
     cJSON_AddStringToObject(o,"error",esp_err_to_name(last_error));
     cJSON_AddStringToObject(o,"ssid",CONFIG_LAB_AP_SSID); cJSON_AddStringToObject(o,"ip","192.168.4.1");

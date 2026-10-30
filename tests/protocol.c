@@ -38,6 +38,12 @@ int main(void){
  n=frame(f,1,0x10000002aULL,false,false);f[24+8+17]^=1;assert(hs_parse(f,n,ap,&k));hs_session_t *conflict=hs_accept(&st,&k,11);assert(conflict->ambiguous);assert(!hs_verifiable(conflict));assert(!hs_verifiable(&st.sessions[0]));
  /* M3 + M2 alone is verifiable but never complete. */
  memset(&st,0,sizeof(st));n=frame(f,3,8,false,false);assert(hs_parse(f,n,ap,&k));s=hs_accept(&st,&k,1);assert(!hs_verifiable(s));n=frame(f,2,7,false,false);assert(hs_parse(f,n,ap,&k));s=hs_accept(&st,&k,2);assert(hs_verifiable(s)&&!hs_complete(s));
+ /* NoDS headers still identify the AP, and inconsistent DS addresses reject. */
+ for(int m=1;m<=2;m++){
+  n=frame(f,m,7,false,false);f[1]=0;assert(hs_parse(f,n,ap,&k));assert(k.message==m);
+ }
+ n=frame(f,2,7,false,false);f[16+5]=8;assert(!hs_parse(f,n,ap,&k));
+ n=frame(f,2,7,false,false);f[24+8+5]|=0x10;assert(!hs_parse(f,n,ap,&k));
  /* Bad direction/length/LLC/fragmentation/aggregation/protection/target. */
  n=frame(f,2,7,true,false);f[24]=0x80;assert(!hs_parse(f,n,ap,&k));
  n=frame(f,2,7,false,false);f[1]|=0x40;assert(!hs_parse(f,n,ap,&k));assert(hs_frame_target(f,n,ap));
@@ -52,7 +58,10 @@ int main(void){
  /* Bounded session eviction. */
  memset(&st,0,sizeof(st));for(unsigned i=0;i<HS_SESSIONS+2;i++){n=frame(f,1,i,false,false);assert(hs_parse(f,n,ap,&k));hs_accept(&st,&k,i+1);}assert(st.evicted==2);
  /* PCAP must refuse invalid records, accept exact validated bytes. */
- hs_record_t r={.channel=6,.time_us=1234567};memcpy(r.bssid,ap,6);r.length=frame(r.data,2,7,true,true);uint8_t out[HS_FRAME_MAX+64];size_t bytes=hs_pcap_record(&r,out,sizeof(out));assert(bytes);assert(!hs_pcap_record(&r,out,1));r.data[4]^=1;assert(!hs_pcap_record(&r,out,sizeof(out)));
+ hs_record_t r={.channel=6,.time_us=1234567};memcpy(r.bssid,ap,6);r.length=frame(r.data,2,7,true,true);uint8_t out[HS_FRAME_MAX+64];size_t bytes=hs_pcap_record(&r,out,sizeof(out));assert(bytes==r.length+28u);assert(out[24]==(2437&255)&&out[25]==(2437>>8));
+ r.channel=13;assert(hs_pcap_record(&r,out,sizeof(out)));assert(out[24]==(2472&255)&&out[25]==(2472>>8));
+ r.channel=14;assert(!hs_pcap_record(&r,out,sizeof(out)));r.channel=6;
+ assert(!hs_pcap_record(&r,out,1));r.data[4]^=1;assert(!hs_pcap_record(&r,out,sizeof(out)));
  /* Deterministic malformed-input sweep under address/undefined sanitizers. */
  unsigned seed=1234567;for(unsigned i=0;i<20000;i++){for(unsigned j=0;j<HS_FRAME_MAX;j++){seed=1664525*seed+1013904223;f[j]=seed>>24;}hs_parse(f,i%HS_FRAME_MAX,ap,&k);}
  puts("PASS protocol: directions, QoS/HT, truncation, replay64, retransmits, out-of-order, incomplete, conflicts, clients, unsupported, eviction, PCAP, 20000 malformed frames");return 0;

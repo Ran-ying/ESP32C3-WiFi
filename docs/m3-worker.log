@@ -1,0 +1,1 @@
+PASS Worker without WebCrypto: 64KiB boundaries, BOM/CRLF/EOF, long/invalid lines, correct/wrong candidates, pause/resume, rejected unsupported handshake

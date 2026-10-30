@@ -1,0 +1,5 @@
+MacBook Chrome + Playwright 1.64.1; synthetic routes; HTTP non-secure origin; 390x844
+PASS local Worker on insecure HTTP, result, no dictionary upload, pause/resume/stop
+PASS mobile layout, escaped SSID, BSSID selection, authorization gate, scan, actual channel
+PASS configured CH13 enabled and CH14 disabled
+NOT an iPhone Safari or live ESP32 HTTP test

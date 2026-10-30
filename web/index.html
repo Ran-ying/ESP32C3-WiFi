@@ -4,5 +4,10 @@
 <section><h2>设备</h2><pre id="status">正在连接…</pre><p id="notice" role="status"></p></section>
 <section><h2>附近网络</h2><label><input id="authorized" type="checkbox"> 我确认选中的网络属于我或已获得明确授权</label><p>扫描期间暂停监听。选择目标后设备热点切换信道，需重新加入同一热点。</p><button id="scan">被动扫描网络</button><div id="networks"></div></section>
 <section id="capture"><h2>认证帧</h2><p>尚未启动监听。</p></section>
-<section id="verify" hidden></section>
-<footer>本地运行 · 无云服务 · 不发送断连或干扰报文</footer></main><script src="/app.js"></script></body></html>
+<section id="verify"><h2>手机本地密码验证</h2><p>仅用于授权网络。字典和匹配结果留在当前浏览器会话，不上传设备。支持 WPA2-PSK / CCMP / 描述符版本 2；ASCII 密码 8–63 字节。</p>
+<button id="load">加载当前捕获</button><label>会话<select id="sessions"><option value="">无可验证数据</option></select></label>
+<p id="missing">先捕获 ANonce 与 M2 的 SNonce、MIC、原始 EAPOL。</p>
+<label>本地 TXT 字典<input id="dictionary" type="file" accept=".txt,text/plain"></label>
+<button id="start" disabled>开始</button><button id="pause" disabled>暂停</button><button id="stop" disabled>停止</button>
+<progress id="progress" value="0" max="100"></progress><pre id="verification" aria-live="polite">尚未开始</pre></section>
+<footer>本地运行 · 无云服务 · 不发送断连或干扰报文</footer></main><script src="/crypto.js"></script><script src="/app.js"></script></body></html>

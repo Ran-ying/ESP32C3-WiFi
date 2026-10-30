@@ -31,13 +31,15 @@ bool hs_parse(const uint8_t *f,size_t n,const uint8_t bssid[6],hs_key_t *o){
     if((p[0]!=1&&p[0]!=2) || p[1]!=3 || p[4]!=2 || len<99 || len>HS_EAPOL_MAX || len>n-h-8 || be16(p+97)!=len-99)return false;
     uint16_t info=be16(p+5);
     if(!(info&8) || (info&(0x400|0x800|0x2000)))return false; /* pairwise, no error/request/SMK */
-    bool ack=info&0x80,mic=info&0x100,install=info&0x40,secure=info&0x200;
+    bool ack=info&0x80,mic=info&0x100,install=info&0x40,secure=info&0x200,encrypted=info&0x1000;
+    unsigned ds=f[1]&3;
+    if((ds==1&&memcmp(d,a,6))||(ds==2&&memcmp(s,a,6))||(ds==0&&memcmp(s,a,6)&&memcmp(d,a,6)))return false;
     bool from_ap=!memcmp(s,a,6);
     uint8_t message=0;
-    if(from_ap && ack && !mic && !install && !secure && nonzero(p+17,32))message=1;
-    if(!from_ap && !ack && mic && !install && !secure && nonzero(p+17,32))message=2;
+    if(from_ap && ack && !mic && !install && !secure && !encrypted && nonzero(p+17,32))message=1;
+    if(!from_ap && !ack && mic && !install && !secure && !encrypted && nonzero(p+17,32))message=2;
     if(from_ap && ack && mic && install && nonzero(p+17,32))message=3;
-    if(!from_ap && !ack && mic && !install && secure && !nonzero(p+17,32) && be16(p+97)==0)message=4;
+    if(!from_ap && !ack && mic && !install && secure && !encrypted && !nonzero(p+17,32) && be16(p+97)==0)message=4;
     if(!message)return false;
     const uint8_t *client=from_ap?d:s;
     if((client[0]&1)||!memcmp(client,a,6)||!nonzero(client,6))return false;
@@ -82,7 +84,7 @@ size_t hs_pcap_header(uint8_t out[24]){
     memset(out,0,24);le32(out,0xa1b2c3d4);out[4]=2;out[6]=4;le32(out+16,HS_FRAME_MAX+12);le32(out+20,127);return 24;
 }
 size_t hs_pcap_record(const hs_record_t *r,uint8_t *out,size_t cap){
-    if(r->length<24||r->length>HS_FRAME_MAX||cap<(size_t)r->length+28||r->channel<1||r->channel>11||!hs_frame_target(r->data,r->length,r->bssid))return 0;
+    if(r->length<24||r->length>HS_FRAME_MAX||cap<(size_t)r->length+28||r->channel<1||r->channel>13||!hs_frame_target(r->data,r->length,r->bssid))return 0;
     hs_key_t key;if(!hs_parse(r->data,r->length,r->bssid,&key))return 0;
     le32(out,r->time_us/1000000);le32(out+4,r->time_us%1000000);le32(out+8,r->length+12);le32(out+12,r->length+12);
     memset(out+16,0,12);out[18]=12;out[20]=8; /* radiotap: channel present */

@@ -91,7 +91,7 @@ cJSON *sniffer_status(void){
         cJSON_AddNumberToObject(v,"mask",s->mask);cJSON_AddNumberToObject(v,"frames",s->frames);
         cJSON_AddNumberToObject(v,"last_us",s->last_us);cJSON_AddNumberToObject(v,"version",s->version);
         cJSON_AddBoolToObject(v,"verifiable",valid);
-        cJSON_AddStringToObject(v,"state",!supported||!s->supported?"UNSUPPORTED":hs_complete(s)?"COMPLETE":valid?"VERIFIABLE":"CAPTURED");
+        cJSON_AddStringToObject(v,"state",!supported||!s->supported?"UNSUPPORTED":valid&&hs_complete(s)?"COMPLETE":valid?"VERIFIABLE":"CAPTURED");
         const char *missing=s->ambiguous?"会话存在冲突，无法可靠关联":!supported||!s->supported?"仅支持 WPA2-PSK + CCMP，描述符版本 2":!t.ssid_len?"缺少非隐藏 SSID":!s->have_anonce?"缺少 ANonce (M1/M3)":!s->have_snonce?"缺少 SNonce (M2)":!(s->mask&2)?"缺少 M2 验证数据":!valid?"MIC 缺失":"";
         cJSON_AddStringToObject(v,"missing",missing);
         if(s->have_anonce)hex(v,"anonce",s->anonce,32);

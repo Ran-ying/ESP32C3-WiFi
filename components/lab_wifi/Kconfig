@@ -5,4 +5,12 @@ config LAB_AP_SSID
 config LAB_AP_PASSWORD
     string "SoftAP password (8-63 printable ASCII; empty generates a private password in NVS)"
     default ""
+config LAB_CHANNEL_MAX
+    int "Maximum permitted 2.4 GHz channel at installation site"
+    range 11 13
+    default 11
+    help
+        Default 1-11. Set 13 only where the installation site permits 1-13.
+        No country entry is required in the web UI. Firmware uses a neutral
+        driver code with this explicit manual range.
 endmenu

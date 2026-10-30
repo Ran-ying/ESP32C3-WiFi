@@ -8,3 +8,4 @@ managed_components/
 *.pcapng
 __pycache__/
 .private/
+node_modules/
