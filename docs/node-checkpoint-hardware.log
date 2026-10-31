@@ -1,0 +1,23 @@
+2026-10-31 Node/checkpoint release verification (sanitized)
+Source commit: 2b7385f
+MacBook Node: v25.9.0
+PASS tests/node-cli.cjs
+PASS tests/cli-interactive.cjs
+PASS tests/pool-checkpoint.cjs
+
+ESP32-C3 app size: 873728 bytes (0xd5500)
+App SHA256: 84af05babbc4116466a163c36c3d77fb950c2b3a2caf09b93c620f6d19d4eec6
+Transfer SHA256 checked before flashing.
+esptool write_flash: Hash of data verified.
+esptool verify_flash at 0x10000, 873728 bytes: verify OK (digest matched).
+
+Serial boot observation (8 seconds):
+Configured channels=1-13
+wifi:mode : sta ([REDACTED]) + softAP ([REDACTED])
+DHCP server started on interface WIFI_AP_DEF with IP: 192.168.4.1
+Returned from app_main()
+Boot count: 1
+Requested private password active: True (value omitted)
+
+NOT TESTED: new features on physical iPhone Safari; new-firmware RF regression.
+No real capture, target identifier, MAC or password is included in this record.

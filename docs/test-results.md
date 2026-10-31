@@ -82,4 +82,7 @@
 - 共享调度器测试：4→1→6 运行中调整，暂停后“开始”、停止后“开始”，数字/TXT/正则全部候选覆盖；正常回收后无遗漏及重复已确认候选。
 - 实际 Chromium 两页面分别通过 4→1→3 动态调整、暂停/停止后开始续跑、相同 TXT 对象续跑、更换来源重置、正则真实 MIC。修复了单候选批次在最后一个候选完成时收到暂停、缺少空闲暂停确认的问题。
 - `npm test`、`npm run test:ui`、原协议 ASan/UBSan、生成资源一致性均 PASS。记录见 node-checkpoint-*.log。
-- ESP-IDF v5.4.2 构建 PASS，app 0xd5500 字节，应用分区剩余 17%。MacBook CLI 与新固件烧录实测待记录；iPhone Safari 新功能 NOT TESTED。
+- ESP-IDF v5.4.2 构建 PASS，app 0xd5500（873728）字节，应用分区剩余 17%。
+- MacBook / Node v25.9.0：Node CLI、交互暂停/停止/开始、安全退出以及共享调度器检查点测试均 PASS，来源均为合成夹具。
+- 新固件烧录与校验 PASS：app SHA256 `84af05babbc4116466a163c36c3d77fb950c2b3a2caf09b93c620f6d19d4eec6`；传输后检查 SHA256，esptool 对 0x10000 起的 873728 字节报告 digest matched。串口确认 APSTA、CH1–13、192.168.4.1 DHCP、app_main 正常返回，8 秒观察窗口一次启动，用户指定私有密码生效。脱敏记录见 node-checkpoint-hardware.log；原始日志仅保存在 MacBook 仓库外私有目录。
+- iPhone Safari 动态并行数、正则与断点继续，以及新固件真实空口回归：NOT TESTED。断点只保留在当前页面/Node 进程内存，刷新页面或退出进程后消失；烧录后的设备 RAM 抓包需重新捕获。
