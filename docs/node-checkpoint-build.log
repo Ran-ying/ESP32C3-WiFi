@@ -1,0 +1,70 @@
+Executing action: all (aliases: build)
+Running ninja in directory /root/ESP32C3-WiFi/build
+Executing "ninja all"...
+[0/1] Re-running CMake...
+-- Building ESP-IDF components for target esp32c3
+-- Project sdkconfig file /root/ESP32C3-WiFi/sdkconfig
+Loading defaults file /root/ESP32C3-WiFi/sdkconfig.defaults...
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/riscv/ld/rom.api.ld
+-- USING O3
+-- App "esp32c3_wifi_lab" version: 7936b9a-dirty
+-- Adding linker script /root/ESP32C3-WiFi/build/esp-idf/esp_system/ld/memory.ld
+-- Adding linker script /root/ESP32C3-WiFi/build/esp-idf/esp_system/ld/sections.ld.in
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.api.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.bt_funcs.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.libgcc.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.version.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.ble_master.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.ble_50.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.ble_smp.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.ble_dtm.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.ble_test.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.ble_scan.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.eco3.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.eco3_bt_funcs.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/esp_rom/esp32c3/ld/esp32c3.rom.newlib.ld
+-- Adding linker script /root/esp-idf-c3-v5.4.2/components/soc/esp32c3/ld/esp32c3.peripherals.ld
+-- Components: app_trace app_update bootloader bootloader_support bt cmock console cxx driver efuse esp-tls esp_adc esp_app_format esp_bootloader_format esp_coex esp_common esp_driver_ana_cmpr esp_driver_cam esp_driver_dac esp_driver_gpio esp_driver_gptimer esp_driver_i2c esp_driver_i2s esp_driver_isp esp_driver_jpeg esp_driver_ledc esp_driver_mcpwm esp_driver_parlio esp_driver_pcnt esp_driver_ppa esp_driver_rmt esp_driver_sdio esp_driver_sdm esp_driver_sdmmc esp_driver_sdspi esp_driver_spi esp_driver_touch_sens esp_driver_tsens esp_driver_uart esp_driver_usb_serial_jtag esp_eth esp_event esp_gdbstub esp_hid esp_http_client esp_http_server esp_https_ota esp_https_server esp_hw_support esp_lcd esp_local_ctrl esp_mm esp_netif esp_netif_stack esp_partition esp_phy esp_pm esp_psram esp_ringbuf esp_rom esp_security esp_system esp_timer esp_vfs_console esp_wifi espcoredump esptool_py fatfs freertos hal handshake heap http_parser idf_test ieee802154 json lab_wifi log lwip main mbedtls mqtt newlib nvs_flash nvs_sec_provider openthread partition_table protobuf-c protocomm pthread riscv rt sdmmc sniffer soc spi_flash spiffs tcp_transport ulp unity usb vfs wear_levelling web wifi_provisioning wpa_supplicant
+-- Component paths: /root/esp-idf-c3-v5.4.2/components/app_trace /root/esp-idf-c3-v5.4.2/components/app_update /root/esp-idf-c3-v5.4.2/components/bootloader /root/esp-idf-c3-v5.4.2/components/bootloader_support /root/esp-idf-c3-v5.4.2/components/bt /root/esp-idf-c3-v5.4.2/components/cmock /root/esp-idf-c3-v5.4.2/components/console /root/esp-idf-c3-v5.4.2/components/cxx /root/esp-idf-c3-v5.4.2/components/driver /root/esp-idf-c3-v5.4.2/components/efuse /root/esp-idf-c3-v5.4.2/components/esp-tls /root/esp-idf-c3-v5.4.2/components/esp_adc /root/esp-idf-c3-v5.4.2/components/esp_app_format /root/esp-idf-c3-v5.4.2/components/esp_bootloader_format /root/esp-idf-c3-v5.4.2/components/esp_coex /root/esp-idf-c3-v5.4.2/components/esp_common /root/esp-idf-c3-v5.4.2/components/esp_driver_ana_cmpr /root/esp-idf-c3-v5.4.2/components/esp_driver_cam /root/esp-idf-c3-v5.4.2/components/esp_driver_dac /root/esp-idf-c3-v5.4.2/components/esp_driver_gpio /root/esp-idf-c3-v5.4.2/components/esp_driver_gptimer /root/esp-idf-c3-v5.4.2/components/esp_driver_i2c /root/esp-idf-c3-v5.4.2/components/esp_driver_i2s /root/esp-idf-c3-v5.4.2/components/esp_driver_isp /root/esp-idf-c3-v5.4.2/components/esp_driver_jpeg /root/esp-idf-c3-v5.4.2/components/esp_driver_ledc /root/esp-idf-c3-v5.4.2/components/esp_driver_mcpwm /root/esp-idf-c3-v5.4.2/components/esp_driver_parlio /root/esp-idf-c3-v5.4.2/components/esp_driver_pcnt /root/esp-idf-c3-v5.4.2/components/esp_driver_ppa /root/esp-idf-c3-v5.4.2/components/esp_driver_rmt /root/esp-idf-c3-v5.4.2/components/esp_driver_sdio /root/esp-idf-c3-v5.4.2/components/esp_driver_sdm /root/esp-idf-c3-v5.4.2/components/esp_driver_sdmmc /root/esp-idf-c3-v5.4.2/components/esp_driver_sdspi /root/esp-idf-c3-v5.4.2/components/esp_driver_spi /root/esp-idf-c3-v5.4.2/components/esp_driver_touch_sens /root/esp-idf-c3-v5.4.2/components/esp_driver_tsens /root/esp-idf-c3-v5.4.2/components/esp_driver_uart /root/esp-idf-c3-v5.4.2/components/esp_driver_usb_serial_jtag /root/esp-idf-c3-v5.4.2/components/esp_eth /root/esp-idf-c3-v5.4.2/components/esp_event /root/esp-idf-c3-v5.4.2/components/esp_gdbstub /root/esp-idf-c3-v5.4.2/components/esp_hid /root/esp-idf-c3-v5.4.2/components/esp_http_client /root/esp-idf-c3-v5.4.2/components/esp_http_server /root/esp-idf-c3-v5.4.2/components/esp_https_ota /root/esp-idf-c3-v5.4.2/components/esp_https_server /root/esp-idf-c3-v5.4.2/components/esp_hw_support /root/esp-idf-c3-v5.4.2/components/esp_lcd /root/esp-idf-c3-v5.4.2/components/esp_local_ctrl /root/esp-idf-c3-v5.4.2/components/esp_mm /root/esp-idf-c3-v5.4.2/components/esp_netif /root/esp-idf-c3-v5.4.2/components/esp_netif_stack /root/esp-idf-c3-v5.4.2/components/esp_partition /root/esp-idf-c3-v5.4.2/components/esp_phy /root/esp-idf-c3-v5.4.2/components/esp_pm /root/esp-idf-c3-v5.4.2/components/esp_psram /root/esp-idf-c3-v5.4.2/components/esp_ringbuf /root/esp-idf-c3-v5.4.2/components/esp_rom /root/esp-idf-c3-v5.4.2/components/esp_security /root/esp-idf-c3-v5.4.2/components/esp_system /root/esp-idf-c3-v5.4.2/components/esp_timer /root/esp-idf-c3-v5.4.2/components/esp_vfs_console /root/esp-idf-c3-v5.4.2/components/esp_wifi /root/esp-idf-c3-v5.4.2/components/espcoredump /root/esp-idf-c3-v5.4.2/components/esptool_py /root/esp-idf-c3-v5.4.2/components/fatfs /root/esp-idf-c3-v5.4.2/components/freertos /root/esp-idf-c3-v5.4.2/components/hal /root/ESP32C3-WiFi/components/handshake /root/esp-idf-c3-v5.4.2/components/heap /root/esp-idf-c3-v5.4.2/components/http_parser /root/esp-idf-c3-v5.4.2/components/idf_test /root/esp-idf-c3-v5.4.2/components/ieee802154 /root/esp-idf-c3-v5.4.2/components/json /root/ESP32C3-WiFi/components/lab_wifi /root/esp-idf-c3-v5.4.2/components/log /root/esp-idf-c3-v5.4.2/components/lwip /root/ESP32C3-WiFi/main /root/esp-idf-c3-v5.4.2/components/mbedtls /root/esp-idf-c3-v5.4.2/components/mqtt /root/esp-idf-c3-v5.4.2/components/newlib /root/esp-idf-c3-v5.4.2/components/nvs_flash /root/esp-idf-c3-v5.4.2/components/nvs_sec_provider /root/esp-idf-c3-v5.4.2/components/openthread /root/esp-idf-c3-v5.4.2/components/partition_table /root/esp-idf-c3-v5.4.2/components/protobuf-c /root/esp-idf-c3-v5.4.2/components/protocomm /root/esp-idf-c3-v5.4.2/components/pthread /root/esp-idf-c3-v5.4.2/components/riscv /root/esp-idf-c3-v5.4.2/components/rt /root/esp-idf-c3-v5.4.2/components/sdmmc /root/ESP32C3-WiFi/components/sniffer /root/esp-idf-c3-v5.4.2/components/soc /root/esp-idf-c3-v5.4.2/components/spi_flash /root/esp-idf-c3-v5.4.2/components/spiffs /root/esp-idf-c3-v5.4.2/components/tcp_transport /root/esp-idf-c3-v5.4.2/components/ulp /root/esp-idf-c3-v5.4.2/components/unity /root/esp-idf-c3-v5.4.2/components/usb /root/esp-idf-c3-v5.4.2/components/vfs /root/esp-idf-c3-v5.4.2/components/wear_levelling /root/ESP32C3-WiFi/components/web /root/esp-idf-c3-v5.4.2/components/wifi_provisioning /root/esp-idf-c3-v5.4.2/components/wpa_supplicant
+-- Configuring done (9.7s)
+-- Generating done (1.2s)
+-- Build files have been written to: /root/ESP32C3-WiFi/build
+[1/19] Performing build step for 'bootloader'
+[1/1] cd /root/ESP32C3-WiFi/build/bootloader/esp-idf/esptool_py && /root/.espressif-c3/python_env/idf5.4_py3.12_env/bin/python /root/esp-idf-c3-v5.4.2/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 /root/ESP32C3-WiFi/build/bootloader/bootloader.bin
+Bootloader binary size 0x5120 bytes. 0x2ee0 bytes (37%) free.
+[2/19] No install step for 'bootloader'
+[3/19] Building C object esp-idf/esp_app_format/CMakeFiles/__idf_esp_app_format.dir/esp_app_desc.c.obj
+[4/19] Completed 'bootloader'
+[5/19] Linking C static library esp-idf/esp_app_format/libesp_app_format.a
+[6/19] Generating ../../index.html.S
+[7/19] Generating ../../app.js.S
+[8/19] Generating ../../parallel.js.S
+[9/19] Generating ../../parallel-worker.js.S
+[10/19] Building ASM object esp-idf/web/CMakeFiles/__idf_web.dir/__/__/index.html.S.obj
+[11/19] Building ASM object esp-idf/web/CMakeFiles/__idf_web.dir/__/__/app.js.S.obj
+[12/19] Building ASM object esp-idf/web/CMakeFiles/__idf_web.dir/__/__/parallel-worker.js.S.obj
+[13/19] Building ASM object esp-idf/web/CMakeFiles/__idf_web.dir/__/__/parallel.js.S.obj
+[14/19] Linking C static library esp-idf/web/libweb.a
+[15/19] Generating ld/sections.ld
+info: Trying to set symbol ESPTOOLPY_FLASHSIZE_2MB to n, but it is currently selected by choice ESPTOOLPY_FLASHSIZE. For setting it to n, set another choice symbol to y instead.
+info: Trying to set symbol COMPILER_OPTIMIZATION_DEBUG to n, but it is currently selected by choice COMPILER_OPTIMIZATION. For setting it to n, set another choice symbol to y instead.
+info: Trying to set symbol ESP_CONSOLE_UART_DEFAULT to n, but it is currently selected by choice ESP_CONSOLE_UART. For setting it to n, set another choice symbol to y instead.
+[16/19] Linking CXX executable esp32c3_wifi_lab.elf
+[17/19] Generating binary image from built executable
+esptool.py v4.8.1
+Creating esp32c3 image...
+Merged 1 ELF section
+Successfully created esp32c3 image.
+Generated /root/ESP32C3-WiFi/build/esp32c3_wifi_lab.bin
+[18/19] cd /root/ESP32C3-WiFi/build/esp-idf/esptool_py && /root/.espressif-c3/python_env/idf5.4_py3.12_env/bin/python /root/esp-idf-c3-v5.4.2/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /root/ESP32C3-WiFi/build/partition_table/partition-table.bin /root/ESP32C3-WiFi/build/esp32c3_wifi_lab.bin
+esp32c3_wifi_lab.bin binary size 0xd5500 bytes. Smallest app partition is 0x100000 bytes. 0x2ab00 bytes (17%) free.
+
+Project build complete. To flash, run:
+ idf.py flash
+or
+ idf.py -p PORT flash
+or
+ python -m esptool --chip esp32c3 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 4MB --flash_freq 80m 0x0 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/esp32c3_wifi_lab.bin
+or from the "/root/ESP32C3-WiFi/build" directory
+ python -m esptool --chip esp32c3 -b 460800 --before default_reset --after hard_reset write_flash "@flash_args"

@@ -42,3 +42,9 @@ GitHub Actions 可构建默认 CH1–11 固件并保留镜像附件；私有热�
 `http://192.168.4.1` 通常没有 Web Crypto，自动模式会使用纯 JS；并行运算都在手机上。浏览器关闭不影响 ESP32 的监听/帧解析，但浏览器内的 PCAP 解析、候选生成与密码验证会停止。扫描会暂停监听，完成后需重新选择目标恢复；抓包仅 RAM，有界覆盖。
 
 两种页面共享解析器、候选源、密码学引擎与 Worker 池。修改共享代码后执行 `python3 tools/build-web-shared.py` 和 `python3 tools/build-standalone.py` 重新生成交付资源；`npm test` 会检查资源同步。
+
+## Node 版与断点续跑
+
+[cli/wpa2.cjs](cli/wpa2.cjs) 提供原生 Node 并行命令行版，无运行时 npm 依赖。支持 PCAP/PCAPNG、数字、生日、有限正则和 TXT；参数示例见 [CLI 说明](cli/README.md)。
+
+设备网页和独立 HTML 均增加正则来源、运行中调整 Worker，以及相同候选源/握手下暂停或停止后的“开始”断点继续。页面刷新/关闭会清除计算断点；ESP32 的监听及 RAM 捕获继续独立运行。

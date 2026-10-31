@@ -74,3 +74,12 @@
 - 独立 HTML `file://` 离线回归与协议 ASan/UBSan 回归：PASS。记录见 device-parallel-*.log。
 - ESP-IDF v5.4.2 构建：PASS，app 0xd26f0 字节，标准应用分区剩余 18%。
 - 新固件烧录/校验与串口启动：PASS，最终 app SHA256 `bc01343ed71977ad808d275d7eea6c7ad73f7a614c0adb6841287ea9a2131c12`，861936 字节，传输后先校验 SHA256 再烧录；esptool verify_flash 报告整段应用 digest matched。串口确认 APSTA、CH1–13、192.168.4.1 DHCP、app_main 正常返回，8 秒窗口一次启动，私有热点密码生效。新版 iPhone Safari 多 Worker/生日/PCAP 与真网空口验收仍 NOT TESTED。
+
+## Node CLI、正则与动态检查点（2026-10-31）
+
+- Node CLI 使用原生 PBKDF2/HMAC 与独立初始化的 libuv 池，无运行时 npm 依赖；PCAP/SSID/算法缺失时明确拒绝。数字、生日、正则、TXT 的合成 MIC 正误、完整耗尽数、退出码、非法参数通过。交互测试验证 p/s/r/q 的暂停、停止、检查点继续与安全退出。
+- 有限正则验证一亿数字的总数与首尾、前缀、分支、可选组、变长重复和安全边界；拒绝无界重复、查找、回溯引用与超量枚举。
+- 共享调度器测试：4→1→6 运行中调整，暂停后“开始”、停止后“开始”，数字/TXT/正则全部候选覆盖；正常回收后无遗漏及重复已确认候选。
+- 实际 Chromium 两页面分别通过 4→1→3 动态调整、暂停/停止后开始续跑、相同 TXT 对象续跑、更换来源重置、正则真实 MIC。修复了单候选批次在最后一个候选完成时收到暂停、缺少空闲暂停确认的问题。
+- `npm test`、`npm run test:ui`、原协议 ASan/UBSan、生成资源一致性均 PASS。记录见 node-checkpoint-*.log。
+- ESP-IDF v5.4.2 构建 PASS，app 0xd5500 字节，应用分区剩余 17%。MacBook CLI 与新固件烧录实测待记录；iPhone Safari 新功能 NOT TESTED。

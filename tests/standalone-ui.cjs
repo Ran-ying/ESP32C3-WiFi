@@ -21,7 +21,7 @@ const f=require('./pcap-fixture.cjs');
   // Pause, resume and stop a substantial interval.
   await page.locator('#range-start').fill('00001000');await page.locator('#range-end').fill('00100000');await page.locator('#start').click();await page.locator('#pause').click();
   await page.waitForFunction(()=>document.getElementById('run-state').textContent==='已暂停',{},{timeout:15000});const paused=await page.locator('#metrics').textContent();await page.waitForTimeout(350);assert.equal(await page.locator('#metrics').textContent(),paused);
-  await page.locator('#pause').click();await page.locator('#stop').click();assert.equal(await page.locator('#run-state').textContent(),'已停止');
+  await page.locator('#pause').click();await page.locator('#stop').click();await page.waitForFunction(()=>document.getElementById('run-state').textContent.startsWith('已停止'));
   // Stream a local dictionary through the same pool, then compare the native engine.
   await page.locator('#source').selectOption('file');await page.locator('#dictionary').setInputFiles({name:'local.txt',mimeType:'text/plain',buffer:Buffer.from('wrong-password\n00000002\n')});
   await page.locator('#start').click();await page.waitForFunction(()=>document.getElementById('run-state').textContent==='找到匹配',{},{timeout:15000});assert.match(await page.locator('#result').textContent(),/00000002/);

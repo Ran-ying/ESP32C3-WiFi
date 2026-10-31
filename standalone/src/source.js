@@ -25,7 +25,7 @@ class BirthdaySource{
  }
 }
 class FileSource{
- constructor(file){if(!file||!file.size)throw Error('请选择非空 TXT 字典');this.file=file;this.total=file.size;this.kind='file';this.chunk=new Uint8Array(0);this.offset=0;this.pos=0;this.pending=[];this.long=false;this.first=true;this.skipped=0;this.eof=false;this.lineDone=false;}
+ constructor(file,workers=4){if(!file||!file.size)throw Error('请选择非空 TXT 字典');this.file=file;this.total=file.size;this.kind='file';this.chunk=new Uint8Array(0);this.offset=0;this.pos=0;this.pending=[];this.long=false;this.first=true;this.skipped=0;this.eof=false;this.lineDone=false;this.workers=workers;this.batches=0;}
  get position(){return this.offset+this.pos;}
  async line(){
   if(this.lineDone)return null;
@@ -45,9 +45,10 @@ class FileSource{
  }
  async nextBatch(){
   if(this.eof)return null;const begin=this.position,candidates=[];
-  while(candidates.length<128&&this.position-begin<65536){const p=await this.line();if(p===null){this.eof=true;break;}if(p)candidates.push(p);}
+  const batchSize=this.batches<this.workers?1:128;
+  while(candidates.length<batchSize&&this.position-begin<65536){const p=await this.line();if(p===null){this.eof=true;break;}if(p)candidates.push(p);}
   if(!candidates.length&&this.position===begin)return null;
-  return {candidates,size:candidates.length,endByte:this.position};
+  if(candidates.length)this.batches++;return {candidates,size:candidates.length,endByte:this.position};
  }
 }
 const api={NumericSource,BirthdaySource,FileSource};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.SOURCES=api;

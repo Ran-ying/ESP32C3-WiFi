@@ -1,6 +1,7 @@
 /* Bounded, local PCAP/PCAPNG reader. Only wireless DLT 105/127 is supported. */
 (function(root){
 'use strict';
+const cryptoTools=typeof module!=='undefined'&&module.exports?require('../../web/crypto.js'):root.WPA2;
 const hex=a=>Array.from(a,x=>x.toString(16).padStart(2,'0')).join('');
 const mac=a=>Array.from(a,x=>x.toString(16).padStart(2,'0')).join(':');
 const eq=(a,b)=>a.length===b.length&&a.every((x,i)=>x===b[i]);
@@ -123,7 +124,7 @@ async function parse(file,onProgress=()=>{}){
   const net=networks.get(s.ap),m2=s.messages[2];s.ssid_hex=net?.ssids.size===1?[...net.ssids][0]:'';
   const supported=s.version===2&&Object.values(s.messages).every(k=>k.version===2&&(k.keyLength===16||([2,4].includes(k.message)&&k.keyLength===0)))&&(m2?.mode===true||(m2?.mode===null&&net?.mode===true));
   s.supported=!!supported;s.mic=m2?.mic;s.eapol=m2?.eapol;
-  s.reason=s.ambiguous?'Replay/Nonce 或验证数据冲突':s.version!==2?'不支持描述符版本':!m2?'缺少 M2':!s.anonce?'缺少 ANonce (M1/M3)':!s.snonce?'缺少 SNonce':!nz(WPA2.hex(m2.mic))?'M2 MIC 缺失':!supported?'UNSUPPORTED / NOT TESTED：未确认 WPA2-PSK + CCMP':'';
+  s.reason=s.ambiguous?'Replay/Nonce 或验证数据冲突':s.version!==2?'不支持描述符版本':!m2?'缺少 M2':!s.anonce?'缺少 ANonce (M1/M3)':!s.snonce?'缺少 SNonce':!nz(cryptoTools.hex(m2.mic))?'M2 MIC 缺失':!supported?'UNSUPPORTED / NOT TESTED：未确认 WPA2-PSK + CCMP':'';
   s.verifiable=!s.reason;s.complete=s.verifiable&&s.mask===15;delete s.messages;sessions.push(s);
  }
  onProgress(1);return {sessions,stats,links:[...links]};

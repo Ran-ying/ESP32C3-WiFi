@@ -7,15 +7,16 @@
 <label>会话<select id="session"><option value="">请先导入抓包</option></select></label><pre id="handshake">尚未导入</pre>
 <label>SSID<input id="ssid" type="text" maxlength="64" autocomplete="off" spellcheck="false" placeholder="抓包没有 SSID 时，请手动填写原始名称"></label><label class="check"><input id="ssid-hex" type="checkbox"> SSID 输入为原始十六进制字节</label>
 <p>ESP32 导出的认证帧 PCAP 通常没有 SSID，必须填写正确名称。缺少 Nonce、M2 或算法证据时禁止验证。</p></section>
-<section><h2>2 · 候选与并行</h2><label>候选来源<select id="source"><option value="numeric">8 位纯数字</option><option value="birthday">8 位生日</option><option value="file">本地 TXT 字典</option></select></label>
+<section><h2>2 · 候选与并行</h2><label>候选来源<select id="source"><option value="numeric">8 位纯数字</option><option value="birthday">8 位生日</option><option value="regex">正则表达式</option><option value="file">本地 TXT 字典</option></select></label>
 <div id="numeric-settings" class="row"><label>起始（含）<input id="range-start" value="00000000" type="text" inputmode="numeric" maxlength="8"></label><label>结束（含）<input id="range-end" value="99999999" type="text" inputmode="numeric" maxlength="8"></label></div>
 <div id="birthday-settings" hidden><div class="row"><label>起始日期<input id="birthday-start" type="date" value="1900-01-01"></label><label>结束日期<input id="birthday-end" type="date"></label></div><label>日期格式<select id="birthday-format"><option value="YYYYMMDD">YYYYMMDD</option><option value="DDMMYYYY">DDMMYYYY</option><option value="MMDDYYYY">MMDDYYYY</option></select></label><p>只生成有效公历日期，包含闰年。</p></div>
+<div id="regex-settings" hidden><label>有限正则<input id="regex-pattern" type="text" maxlength="512" value="^[0-9]{8}$" spellcheck="false" autocomplete="off"></label><p>支持字符集合、分组、分支、?、{n}、{m,n}，候选仅含可打印 ASCII 的 8–63 字节。默认按整个候选匹配，^ 和 $ 可选。无界 *、+、前后查找和反向引用不支持。相互重叠的分支可能生成重复候选。</p></div>
 <label id="file-settings" hidden>TXT 字典<input id="dictionary" type="file" accept=".txt,text/plain"></label>
 <div class="row"><label>并行 Worker 数（1–256）<input id="workers" type="number" min="1" max="256" step="1" value="4"></label><label>运算引擎<select id="engine"><option value="auto">自动：优先原生 PBKDF2</option><option value="native">浏览器原生 PBKDF2</option><option value="js">纯 JavaScript</option></select></label></div>
-<p id="hardware"></p><p>数字按需生成，不保存一亿行文件。每个 Worker 领取不重复的区间；TXT 单次读取并分批分配，支持 ASCII 密码 8–63 字节。原生引擎不可用时，“自动”使用纯 JS。实际速度以测速为准。</p>
+<button id="apply-workers">应用并行数</button><p id="hardware"></p><p>数字按需生成，不保存一亿行文件。每个 Worker 领取不重复的区间；TXT 单次读取并分批分配，支持 ASCII 密码 8–63 字节。原生引擎不可用时，“自动”使用纯 JS。实际速度以测速为准。</p>
 <label class="check"><input id="authorized" type="checkbox"> 我确认抓包来自自己拥有或明确授权的测试网络</label>
 <p id="validation" role="status"></p><div class="buttons"><button id="start" disabled>开始并行验证</button><button id="pause" disabled>暂停</button><button id="stop" disabled>停止</button></div></section>
 <section><h2>3 · 运行状态</h2><p id="run-state" role="status">尚未开始</p><progress id="progress" max="100" value="0"></progress><pre id="metrics">已验证：0</pre><pre id="result" aria-live="polite"></pre><div class="table-wrap"><table><thead><tr><th>Worker</th><th>引擎</th><th>状态</th><th>已回报</th><th>当前任务</th></tr></thead><tbody id="worker-table"></tbody></table></div>
-<p>暂停保留当前进度；停止后重新开始从头执行。页面关闭后抓包、进度和结果消失。并行匹配不保证按字典顺序命中；M1+M2 的匹配仅证明符合终端尝试，不单独证明路由器接受该密码。</p></section>
+<p>暂停保留当前进度；停止后同一字典可从断点继续。同一页面中可保留断点；更换字典、范围、正则或握手会重置。重新选择 TXT 文件视为新字典。页面关闭或刷新后进度消失。并行匹配不保证按字典顺序命中；M1+M2 的匹配仅证明符合终端尝试，不单独证明路由器接受该密码。</p></section>
 <footer>无 CDN · 无网络请求 · 无持久化 · 不发送无线报文</footer></main>
 <script id="worker-code" type="application/octet-stream">@@WORKER@@</script><script>@@MAIN@@</script></body></html>

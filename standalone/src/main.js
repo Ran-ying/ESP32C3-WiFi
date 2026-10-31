@@ -3,7 +3,7 @@ const $=id=>document.getElementById(id);
 const workerText=new TextDecoder().decode(Uint8Array.from(atob($('worker-code').textContent.trim()),c=>c.charCodeAt(0)));
 const workerURL=URL.createObjectURL(new Blob([workerText],{type:'application/javascript'}));
 let sessions=[],parser=null,selectedAp=null,active=false,importing=false;
-const inputIds=['capture-file','session','ssid','ssid-hex','source','range-start','range-end','dictionary','workers','engine','authorized','birthday-start','birthday-end','birthday-format'];
+const inputIds=['capture-file','session','ssid','ssid-hex','source','range-start','range-end','dictionary','engine','authorized','birthday-start','birthday-end','birthday-format','regex-pattern'];
 function controls(lock){active=lock;for(const id of inputIds)$(id).disabled=lock;$('pause').disabled=!lock;$('stop').disabled=!lock;validate();}
 function selected(){return sessions.find(s=>String(s.id)===$('session').value);}
 function ssidHex(){
@@ -15,8 +15,9 @@ function ssidHex(){
 function readyRecord(){const s=selected();if(!s)throw Error('请导入并选择握手');if(!s.verifiable)throw Error(s.reason||'缺少验证材料');return {...s,ssid_hex:ssidHex()};}
 function candidateSource(n){
  if($('source').value==='numeric')return new SOURCES.NumericSource($('range-start').value,$('range-end').value,n);
+ if($('source').value==='regex')return new SOURCES.RegexSource($('regex-pattern').value,n);
  if($('source').value==='birthday')return new SOURCES.BirthdaySource($('birthday-start').value,$('birthday-end').value,n,$('birthday-format').value);
- return new SOURCES.FileSource($('dictionary').files[0]);
+ return new SOURCES.FileSource($('dictionary').files[0],n);
 }
 function validate(){
  let ok=false,message='';
@@ -24,7 +25,7 @@ function validate(){
   candidateSource(n);
   if(!$('authorized').checked)throw Error('请确认网络授权');ok=true;message='材料与设置有效，可开始本地并行验证。';
  }catch(e){message=e.message;}
- $('validation').textContent=message;$('start').disabled=!ok||active||importing;return ok;
+ $('validation').textContent=message;const resumable=ok&&pool.canResume({record:readyRecord(),source:candidateSource(Number($('workers').value))});$('start').textContent=resumable?'继续（断点）':'开始并行验证';$('start').disabled=!ok||(active&&!pool.run?.paused)||importing;return ok;
 }
 function sessionInfo(fill=false){
  const s=selected();if(!s){$('handshake').textContent='没有可选择的握手';validate();return;}
@@ -57,19 +58,21 @@ $('capture-file').onchange=()=>{
 function duration(seconds){if(seconds===null||!Number.isFinite(seconds))return '—';if(seconds<60)return `${Math.ceil(seconds)} 秒`;if(seconds<3600)return `${(seconds/60).toFixed(1)} 分钟`;if(seconds<86400)return `${(seconds/3600).toFixed(1)} 小时`;return `${(seconds/86400).toFixed(1)} 天`;}
 function render(s){
  if(!s)return;
- const names={running:s.paused?(s.allPaused?'已暂停':'正在暂停…'):'并行验证中',found:'找到匹配',done:'全部完成，未找到匹配',stopped:'已停止',error:'运行失败'};
+ const names={running:s.paused?(s.allPaused?'已暂停':'正在暂停…'):'并行验证中',found:'找到匹配',done:'全部完成，未找到匹配',stopped:'已停止（断点已保留）',stopping:'正在保存断点…',error:'运行失败'};
  $('run-state').textContent=names[s.phase];$('progress').value=s.percent;
  $('metrics').textContent=`已验证（回报）：${s.tested.toLocaleString()}\n速度：${s.rate.toFixed(2)} 候选/秒 · 已用 ${duration(s.elapsed)}\n进度：${s.percent.toFixed(4)}% · ${s.kind!=='file'?`${s.total.toLocaleString()} 个候选`:`${s.processed.toLocaleString()} / ${s.total.toLocaleString()} 字节已确认`}\n跳过非法行：${s.skipped.toLocaleString()} · 预计剩余：${['found','done'].includes(s.phase)?'0 秒':duration(s.eta)}\n已启动 Worker：${s.slots.length}`;
  $('result').textContent=s.password!==null?`匹配密码：${s.password}`:s.error||'';
  $('worker-table').replaceChildren();for(const slot of s.slots){const tr=document.createElement('tr');for(const value of [slot.id,slot.engine,slot.state,slot.total.toLocaleString(),slot.range]){const td=document.createElement('td');td.textContent=value;tr.append(td);}$('worker-table').append(tr);}
- $('pause').textContent=s.paused?'继续':'暂停';if(s.phase!=='running'&&active)controls(false);
+ $('pause').textContent=s.paused?'继续':'暂停';if(['found','done','error','stopped'].includes(s.phase)&&active)controls(false);else validate();
 }
 const pool=new ParallelPool(workerURL,render);
 $('start').onclick=()=>{if(!validate())return;try{const workers=Number($('workers').value),record=readyRecord(),source=candidateSource(workers);$('result').textContent='';controls(true);pool.start({record,source,workers,engine:$('engine').value});}catch(e){controls(false);$('result').textContent=e.message;}};
 $('pause').onclick=()=>{if(pool.run?.paused)pool.resume();else pool.pause();};$('stop').onclick=()=>pool.stop();
 $('session').onchange=()=>sessionInfo(true);
-$('source').onchange=()=>{$('numeric-settings').hidden=$('source').value!=='numeric';$('file-settings').hidden=$('source').value!=='file';$('birthday-settings').hidden=$('source').value!=='birthday';validate();};
-for(const id of ['ssid','ssid-hex','range-start','range-end','dictionary','workers','engine','authorized','birthday-start','birthday-end','birthday-format'])$(id).addEventListener('input',validate);
+$('source').onchange=()=>{$('numeric-settings').hidden=$('source').value!=='numeric';$('file-settings').hidden=$('source').value!=='file';$('birthday-settings').hidden=$('source').value!=='birthday';$('regex-settings').hidden=$('source').value!=='regex';validate();};
+for(const id of ['ssid','ssid-hex','range-start','range-end','dictionary','engine','authorized','birthday-start','birthday-end','birthday-format','regex-pattern','workers'])$(id).addEventListener('input',validate);
+$('workers').addEventListener('change',()=>{if(pool.run&&!pool.run.cancelled){try{pool.resize(Number($('workers').value));}catch(e){$('validation').textContent=e.message;}}});
+$('apply-workers').onclick=()=>{try{const n=Number($('workers').value);pool.validateWorkers(n);if(pool.run&&!pool.run.cancelled)pool.resize(n);$('validation').textContent=`并行数设置为 ${n}。`;}catch(e){$('validation').textContent=e.message;}};
 const reported=navigator.hardwareConcurrency;$('workers').value=Math.min(256,Math.max(1,reported||4));$('hardware').textContent=`浏览器报告逻辑核数：${reported||'未知'}。并行数由你设置；原生计算后端和浏览器会影响实际加速。`;
 $('birthday-end').value=`${new Date().getFullYear()}-12-31`;
 setInterval(()=>{if(pool.run&&!pool.run.cancelled)render(pool.snapshot());},250);

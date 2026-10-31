@@ -2,8 +2,8 @@
   "name": "esp32c3-wifi-lab-tests",
   "private": true,
   "scripts": {
-    "test": "node tests/crypto.cjs && node tests/worker.cjs && node tests/standalone.cjs && python3 tools/build-standalone.py --check && python3 tools/build-web-shared.py --check",
-    "test:ui": "node tests/ui.cjs && node tests/standalone-ui.cjs"
+    "test": "node tests/crypto.cjs && node tests/worker.cjs && node tests/standalone.cjs && node tests/node-cli.cjs && node tests/cli-interactive.cjs && node tests/pool-checkpoint.cjs && python3 tools/build-standalone.py --check && python3 tools/build-web-shared.py --check",
+    "test:ui": "node tests/ui.cjs && node tests/standalone-ui.cjs && node tests/checkpoint-ui.cjs"
   },
   "devDependencies": {
     "playwright": "1.64.1"

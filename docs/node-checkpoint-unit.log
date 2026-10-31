@@ -1,0 +1,14 @@
+
+> test
+> node tests/crypto.cjs && node tests/worker.cjs && node tests/standalone.cjs && node tests/node-cli.cjs && node tests/cli-interactive.cjs && node tests/pool-checkpoint.cjs && python3 tools/build-standalone.py --check && python3 tools/build-web-shared.py --check
+
+PASS SHA1, RFC2202 HMAC, RFC6070 PBKDF2, WPA PMK, OpenSSL boundaries, Python PMK/PTK/MIC fixture, correct/wrong candidates, malformed input
+PASS numeric8: real MIC, zero padding, inclusive bounds, progress, pause/resume, invalid ranges
+PASS Worker without WebCrypto: 64KiB boundaries, BOM/CRLF/EOF, long/invalid lines, correct/wrong candidates, pause/resume, rejected unsupported handshake
+PASS standalone parser: PCAP endian/micro/nano/raw/radiotap, PCAPNG EPB/SPB/endian/sections, QoS/HT/padding, retransmits, missing SSID, conflicts, unsupported and corrupt input
+PASS sources/engine: disjoint numeric batches, last value, streaming TXT, JS/native MIC and HTTP fallback
+PASS Node CLI: native MIC, PCAP/list/SSID gates, numeric/regex/birthday/TXT, exact exhaustion counts, invalid flags; finite regex counts and syntax bounds
+PASS Node interactive pause/stop/start checkpoint and safe quit
+PASS shared pool: live 4→1→6 resize, pause/start continuation, stop/start exact checkpoints, numeric/TXT/regex coverage without lost or duplicate candidates, changed-source reset gate
+PASS standalone HTML matches its sources
+PASS web shared bundles match sources

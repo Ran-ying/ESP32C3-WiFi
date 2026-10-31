@@ -95,7 +95,7 @@ function renderCapture(c){
 }
 
 let loaded=[],verifying=false,parsing=false,parser=null,recordOrigin='live',selectedAp=null;
-const verifyInputs=['load','capture-file','sessions','ssid','ssid-hex','source','dictionary','numeric-start','numeric-end','birthday-start','birthday-end','birthday-format','workers','engine'];
+const verifyInputs=['load','capture-file','sessions','ssid','ssid-hex','source','dictionary','numeric-start','numeric-end','birthday-start','birthday-end','birthday-format','engine','regex-pattern'];
 function currentRecord(){
  const r=loaded.find(x=>String(x.id)===$('sessions').value);if(!r)throw Error('请选择具备 ANonce、SNonce、M2 MIC 和原始 EAPOL 的会话');
  if(!r.verifiable)throw Error(r.reason||r.missing||'该会话的验证材料不完整');
@@ -107,17 +107,18 @@ function currentRecord(){
 function createSource(){
  const workers=Number($('workers').value);if(!Number.isInteger(workers)||workers<1||workers>256)throw Error('并行数须为 1–256 的整数');
  if($('source').value==='numeric8')return new SOURCES.NumericSource($('numeric-start').value,$('numeric-end').value,workers);
+ if($('source').value==='regex')return new SOURCES.RegexSource($('regex-pattern').value,workers);
  if($('source').value==='birthday')return new SOURCES.BirthdaySource($('birthday-start').value,$('birthday-end').value,workers,$('birthday-format').value);
- return new SOURCES.FileSource($('dictionary').files[0]);
+ return new SOURCES.FileSource($('dictionary').files[0],workers);
 }
 function checkStart(){
  let valid=false,message='';
  try{currentRecord();createSource();if(!$('authorized').checked)throw Error('请先确认网络授权');valid=true;message='材料可验证，候选将在手机本地并行处理。';}
  catch(e){message=e.message;}
- $('missing').textContent=message;$('start').disabled=!valid||verifying||parsing;return valid;
+ $('missing').textContent=message;const resumable=valid&&pool.canResume({record:currentRecord(),source:createSource()});$('start').textContent=resumable?'继续（断点）':'开始';$('start').disabled=!valid||(verifying&&!pool.run?.paused)||parsing;return valid;
 }
 function sourceChanged(){
- $('numeric-settings').hidden=$('source').value!=='numeric8';$('birthday-settings').hidden=$('source').value!=='birthday';$('file-settings').hidden=$('source').value!=='file';checkStart();
+ $('numeric-settings').hidden=$('source').value!=='numeric8';$('birthday-settings').hidden=$('source').value!=='birthday';$('file-settings').hidden=$('source').value!=='file';$('regex-settings').hidden=$('source').value!=='regex';checkStart();
 }
 function recordSelected(fill=false){
  const r=loaded.find(x=>String(x.id)===$('sessions').value);
@@ -156,16 +157,18 @@ $('capture-file').onchange=()=>{
 function duration(seconds){if(seconds===null||!Number.isFinite(seconds))return '等待测速';if(seconds<60)return `${Math.ceil(seconds)} 秒`;if(seconds<3600)return `${(seconds/60).toFixed(1)} 分钟`;if(seconds<86400)return `${(seconds/3600).toFixed(1)} 小时`;return `${(seconds/86400).toFixed(1)} 天`;}
 function verificationControls(lock){verifying=lock;for(const id of verifyInputs)$(id).disabled=lock;$('pause').disabled=!lock;$('stop').disabled=!lock;checkStart();}
 function renderVerification(s){
- $('progress').value=s.percent;const phase=s.phase==='found'?`匹配密码: ${s.password}`:s.phase==='done'?'完成，未找到匹配':s.phase==='error'?`运行失败: ${s.error}`:s.phase==='stopped'?'已停止；可重新开始。':s.paused?(s.allPaused?'已暂停':'正在暂停…'):'并行验证中';
+ $('progress').value=s.percent;const phase=s.phase==='found'?`匹配密码: ${s.password}`:s.phase==='done'?'完成，未找到匹配':s.phase==='error'?`运行失败: ${s.error}`:s.phase==='stopped'?'已停止；相同字典可从断点继续。':s.phase==='stopping'?'正在保存断点…':s.paused?(s.allPaused?'已暂停':'正在暂停…'):'并行验证中';
  $('verification').textContent=`已验证: ${s.tested} · 跳过无效行: ${s.skipped}\n速度: ${s.rate.toFixed(2)} 候选/秒\n${s.kind==='file'?'字典处理':'候选进度'}: ${s.percent.toFixed(4)}% · ${s.total.toLocaleString()} ${s.kind==='file'?'字节':'个候选'}\n预计剩余: ${duration(['found','done'].includes(s.phase)?0:s.eta)}\nWorker: ${s.slots.length}\n${phase}`;
  $('worker-table').replaceChildren();for(const slot of s.slots){const tr=document.createElement('tr');for(const value of [slot.id,slot.engine,slot.state,slot.total]){const td=document.createElement('td');td.textContent=value;tr.append(td);}$('worker-table').append(tr);}
- $('pause').textContent=s.paused?'继续':'暂停';if(s.phase!=='running'&&verifying)verificationControls(false);
+ $('pause').textContent=s.paused?'继续':'暂停';if(['found','done','error','stopped'].includes(s.phase)&&verifying)verificationControls(false);else checkStart();
 }
 const pool=new ParallelPool('/parallel-worker.js',renderVerification);
 $('start').onclick=()=>{if(!checkStart())return;try{const record=currentRecord(),source=createSource(),workers=Number($('workers').value),engine=$('engine').value;verificationControls(true);pool.start({record,source,workers,engine});}catch(e){verificationControls(false);$('verification').textContent=e.message;}};
 $('pause').onclick=()=>{if(pool.run?.paused)pool.resume();else pool.pause();};$('stop').onclick=()=>pool.stop();
 $('load').onclick=loadCaptured;$('sessions').onchange=()=>recordSelected(true);$('source').onchange=sourceChanged;
-for(const id of ['ssid','ssid-hex','dictionary','numeric-start','numeric-end','birthday-start','birthday-end','birthday-format','workers','engine','authorized'])$(id).addEventListener('input',checkStart);
+for(const id of ['ssid','ssid-hex','dictionary','numeric-start','numeric-end','birthday-start','birthday-end','birthday-format','workers','engine','authorized','regex-pattern'])$(id).addEventListener('input',checkStart);
+$('workers').addEventListener('change',()=>{const n=Number($('workers').value);if(pool.run&&!pool.run.cancelled){try{pool.resize(n);}catch(e){notice(e.message);}}});
+$('apply-workers').onclick=()=>{try{const n=Number($('workers').value);pool.validateWorkers(n);if(pool.run&&!pool.run.cancelled)pool.resize(n);notice(`并行数设置为 ${n}；相同字典可继续原进度。`);}catch(e){notice(e.message);}};
 const cores=navigator.hardwareConcurrency;$('workers').value=Math.min(256,Math.max(1,cores||4));$('hardware').textContent=`浏览器报告逻辑核数：${cores||'未知'}；可自行设置 1–256 个 Worker。`;
 $('birthday-end').value=`${new Date().getFullYear()}-12-31`;
 setInterval(()=>{if(pool.run&&!pool.run.cancelled)renderVerification(pool.snapshot());},250);

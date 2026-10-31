@@ -1,0 +1,12 @@
+
+> test:ui
+> node tests/ui.cjs && node tests/standalone-ui.cjs && node tests/checkpoint-ui.cjs
+
+PASS mobile UI: escaped SSID/BSSID selection, authorization, channel bounds, switch confirm/cancel/success
+PASS real parallel Workers on insecure HTTP: TXT/numeric8/birthday, leap-day MIC, local PCAP/SSID gate, no candidate upload, range validation, pause/resume/stop
+PASS reconnect: retained-capture auto load, hung-request timeout recovery and pageshow recovery without reload
+PASS real 1-Worker exhaustive JS run: 64 candidates
+PASS real 4-Worker exhaustive JS run: 64 candidates
+PASS single HTML via file:// offline: import, adjustable parallelism, real MIC, native/JS, TXT, pause/resume/stop, missing material gate, zero HTTP requests
+PASS standalone: runtime 4→1→3, paused Start, stopped Start, regex/TXT checkpoints, changed source restart, real MIC
+PASS device: runtime 4→1→3, paused Start, stopped Start, regex/TXT checkpoints, changed source restart, real MIC

@@ -26,7 +26,7 @@ class BirthdaySource{
  }
 }
 class FileSource{
- constructor(file){if(!file||!file.size)throw Error('请选择非空 TXT 字典');this.file=file;this.total=file.size;this.kind='file';this.chunk=new Uint8Array(0);this.offset=0;this.pos=0;this.pending=[];this.long=false;this.first=true;this.skipped=0;this.eof=false;this.lineDone=false;}
+ constructor(file,workers=4){if(!file||!file.size)throw Error('请选择非空 TXT 字典');this.file=file;this.total=file.size;this.kind='file';this.chunk=new Uint8Array(0);this.offset=0;this.pos=0;this.pending=[];this.long=false;this.first=true;this.skipped=0;this.eof=false;this.lineDone=false;this.workers=workers;this.batches=0;}
  get position(){return this.offset+this.pos;}
  async line(){
   if(this.lineDone)return null;
@@ -46,76 +46,164 @@ class FileSource{
  }
  async nextBatch(){
   if(this.eof)return null;const begin=this.position,candidates=[];
-  while(candidates.length<128&&this.position-begin<65536){const p=await this.line();if(p===null){this.eof=true;break;}if(p)candidates.push(p);}
+  const batchSize=this.batches<this.workers?1:128;
+  while(candidates.length<batchSize&&this.position-begin<65536){const p=await this.line();if(p===null){this.eof=true;break;}if(p)candidates.push(p);}
   if(!candidates.length&&this.position===begin)return null;
-  return {candidates,size:candidates.length,endByte:this.position};
+  if(candidates.length)this.batches++;return {candidates,size:candidates.length,endByte:this.position};
  }
 }
 const api={NumericSource,BirthdaySource,FileSource};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.SOURCES=api;
 })(typeof self!=='undefined'?self:globalThis);
 
 ;
+/* Finite printable-ASCII regex enumeration. Never executes an untrusted RegExp. */
 (function(root){
 'use strict';
-class Pool{
- constructor(url,onUpdate){this.url=url;this.onUpdate=onUpdate;this.run=null;}
- start({record,source,workers,engine}){
-  if(this.run&&!this.run.cancelled)throw Error('任务正在运行');
-  if(!Number.isInteger(workers)||workers<1||workers>256)throw Error('并行数须为 1–256 的整数');
-  const n=source.kind!=='file'?Math.min(workers,source.total):workers;
-  const r={source,slots:[],completed:0,started:performance.now(),paused:false,pauseMs:0,cancelled:false,eof:false,seq:0,chain:Promise.resolve(),frontier:0,frontierId:1,finished:new Map(),phase:'running',password:null,error:null};this.run=r;
-  try{
-   for(let i=0;i<n;i++){
-    const worker=new Worker(this.url),slot={worker,id:i+1,active:null,queued:null,assigning:false,total:0,ready:false,paused:false,engine:'初始化'};r.slots.push(slot);
-    worker.onmessage=e=>{if(this.run!==r||r.cancelled)return;this.message(r,slot,e.data);};
-    worker.onerror=e=>{if(this.run===r&&!r.cancelled)this.finish(r,'error',e.message||'Worker 启动失败');};
-    worker.postMessage({type:'init',record,engine});
-   }
-  }catch(e){this.finish(r,'error',e.message);}
-  this.emit(r);
+let budget=0,cachedPattern=null,cachedTree=null;
+const LIMIT=BigInt(Number.MAX_SAFE_INTEGER)+1n,MAX=63,ASCII=Array.from({length:95},(_,i)=>String.fromCharCode(i+32));
+const add=(a,b)=>a+b>=LIMIT?LIMIT:a+b,mul=(a,b)=>a*b>=LIMIT?LIMIT:a*b;
+function convolution(a,b){const c=Array(64).fill(0n);for(let i=0;i<=MAX;i++)if(a[i])for(let j=0;j+i<=MAX;j++)if(b[j]){if(++budget>1000000)throw Error('正则组合过于复杂，请简化');c[i+j]=add(c[i+j],mul(a[i],b[j]));}return c;}
+function chars(values){const values2=[...new Set(values)],counts=Array(64).fill(0n);counts[1]=BigInt(values2.length);return {kind:'chars',values:values2,counts};}
+function seq(nodes){const suffix=Array(nodes.length+1);suffix[nodes.length]=Array(64).fill(0n);suffix[nodes.length][0]=1n;for(let i=nodes.length-1;i>=0;i--)suffix[i]=convolution(nodes[i].counts,suffix[i+1]);return {kind:'seq',nodes,suffix,counts:suffix[0]};}
+function alt(nodes){const counts=Array(64).fill(0n);for(const n of nodes)for(let i=0;i<=MAX;i++)counts[i]=add(counts[i],n.counts[i]);return {kind:'alt',nodes,counts};}
+function parse(pattern){
+ if(typeof pattern!=='string'||!pattern.length||pattern.length>512)throw Error('正则须为 1–512 个字符');
+ let text=pattern;if(text.startsWith('^'))text=text.slice(1);if(text.endsWith('$')){let slashes=0;for(let i=text.length-2;i>=0&&text[i]==='\\';i--)slashes++;if(slashes%2===0)text=text.slice(0,-1);}
+ let p=0,depth=0,nodes=0;
+ function literal(c){if(!c||c.charCodeAt(0)<32||c.charCodeAt(0)>126)throw Error('候选仅支持可打印 ASCII');return c;}
+ function escaped(){
+  const c=text[p++];if(!c)throw Error('正则转义未结束');
+  const word=ASCII.filter(x=>/[A-Za-z0-9_]/.test(x));
+  if(c==='d')return [...'0123456789'];if(c==='D')return ASCII.filter(x=>!/[0-9]/.test(x));if(c==='w')return word;if(c==='W')return ASCII.filter(x=>!word.includes(x));if(c==='s')return [' '];if(c==='S')return ASCII.filter(x=>x!==' ');
+  if(c==='x'||c==='u'){const n=c==='x'?2:4,h=text.slice(p,p+n);if(!new RegExp(`^[0-9a-fA-F]{${n}}$`).test(h))throw Error('无效字符转义');p+=n;return [literal(String.fromCharCode(parseInt(h,16)))];}
+  if(/[A-Za-z0-9]/.test(c))throw Error('不支持边界、反向引用或该转义');return [literal(c)];
  }
- message(r,slot,m){
-  if(m.type==='error'){this.finish(r,'error',m.message);return;}
-  if(m.type==='ready'){slot.ready=true;slot.engine=m.engine;if(r.paused)slot.worker.postMessage({type:'pause'});else this.assign(r,slot);}
-  if(m.type==='paused'){if(slot.active&&m.taskId===slot.active.id)slot.active.tested=m.tested;slot.paused=true;}
-  if(['progress','done','found'].includes(m.type)){
-   if(!slot.active||slot.active.id!==m.taskId)return;slot.active.tested=m.tested;
-   if(m.type==='found'){r.password=m.password;this.finish(r,'found');return;}
-   if(m.type==='done'){
-    const t=slot.active;r.completed+=m.tested;slot.total+=m.tested;slot.active=null;r.finished.set(t.id,t.endByte);
-    while(r.finished.has(r.frontierId)){r.frontier=r.finished.get(r.frontierId);r.finished.delete(r.frontierId++);}
-    if(!r.paused)this.assign(r,slot);
+ function atom(){
+  if(++nodes>256)throw Error('正则结构过于复杂');const c=text[p++];
+  if(c==='('){if(++depth>24)throw Error('分组嵌套超过 24 层');if(text.slice(p,p+2)==='?:')p+=2;else if(text[p]==='?')throw Error('不支持前后查找或特殊分组');const n=expression();if(text[p++]!==')')throw Error('缺少右括号');depth--;return n;}
+  if(c==='['){let negative=false;if(text[p]==='^'){negative=true;p++;}const values=[];
+   while(p<text.length&&text[p]!==']'){
+    let left=text[p++];const set=left==='\\'?escaped():[literal(left)];
+    if(text[p]==='-'&&text[p+1]!==']'&&p+1<text.length){p++;const right=text[p++],end=right==='\\'?escaped():[literal(right)];if(set.length!==1||end.length!==1||set[0]>end[0])throw Error('字符范围无效');for(let i=set[0].charCodeAt(0);i<=end[0].charCodeAt(0);i++)values.push(String.fromCharCode(i));}else values.push(...set);
    }
+   if(text[p++]!==']'||!values.length)throw Error('字符集合未结束或为空');return chars(negative?ASCII.filter(x=>!values.includes(x)):values);
   }
-  this.complete(r);this.emit(r);
+  if(c==='.')return chars(ASCII);if(c==='\\')return chars(escaped());if(!c||'|)*+?{}^$]'.includes(c))throw Error('正则语法不支持或位置不正确');return chars([literal(c)]);
  }
- async assign(r,slot){
-  if(r.cancelled||r.paused||slot.active||slot.assigning||!slot.ready)return;
-  if(slot.queued){this.dispatch(r,slot,slot.queued);slot.queued=null;return;}
-  slot.assigning=true;
+ function term(){let n=atom(),min,max;if(text[p]==='*'||text[p]==='+')throw Error('不支持无界 * 或 +，请用 {最少,最多} 明确范围');
+  if(text[p]==='?'){p++;min=0;max=1;}
+  else if(text[p]==='{'){const m=text.slice(p).match(/^\{(\d+)(?:,(\d+))?\}/);if(!m)throw Error('重复必须为 {n} 或 {m,n}');p+=m[0].length;min=Number(m[1]);max=m[2]===undefined?min:Number(m[2]);if(min>max||max>63)throw Error('重复上限为 63，且最小值不能大于最大值');}
+  if(min!==undefined){const choices=[];for(let k=min;k<=max;k++)choices.push(seq(Array(k).fill(n)));n=alt(choices);}return n;
+ }
+ function expression(){const choices=[];while(true){const list=[];while(p<text.length&&text[p]!=='|'&&text[p]!==')')list.push(term());choices.push(seq(list));if(text[p]!=='|')break;p++;}return choices.length===1?choices[0]:alt(choices);}
+ const tree=expression();if(p!==text.length)throw Error('正则括号或结尾不匹配');return tree;
+}
+function unrank(node,length,index){
+ if(node.kind==='chars')return node.values[Number(index)];
+ if(node.kind==='alt'){for(const n of node.nodes){if(index<n.counts[length])return unrank(n,length,index);index-=n.counts[length];}throw Error('正则索引超出范围');}
+ let out='',remaining=length;
+ for(let i=0;i<node.nodes.length;i++){
+  const n=node.nodes[i];let found=false;
+  for(let len=0;len<=remaining;len++){const suffix=node.suffix[i+1][remaining-len],count=mul(n.counts[len],suffix);if(index<count){out+=unrank(n,len,index/suffix);index%=suffix;remaining-=len;found=true;break;}index-=count;}
+  if(!found)throw Error('正则序列索引非法');
+ }return out;
+}
+class RegexSource{
+ constructor(pattern,workers){this.pattern=pattern;budget=0;if(cachedPattern!==pattern){cachedTree=parse(pattern);cachedPattern=pattern;}this.tree=cachedTree;let count=0n;for(let i=8;i<=63;i++)count=add(count,this.tree.counts[i]);if(count>=LIMIT)throw Error('候选数超过安全统计范围，请缩小正则');if(!count)throw Error('正则没有 8–63 字节的候选');this.total=Number(count);this.next=0;this.kind='regex';this.skipped=0;this.batch=Math.max(1,Math.min(128,Math.ceil(this.total/(workers*4))));}
+ at(index){let rank=BigInt(index);for(let length=8;length<=63;length++){if(rank<this.tree.counts[length])return unrank(this.tree,length,rank);rank-=this.tree.counts[length];}throw Error('候选索引非法');}
+ async nextBatch(){if(this.next>=this.total)return null;const first=this.next,candidates=[];while(candidates.length<this.batch&&this.next<this.total)candidates.push(this.at(this.next++));return {candidates,size:candidates.length,endByte:0,label:`正则 #${first+1}–${this.next}`};}
+}
+if(typeof module!=='undefined'&&module.exports)module.exports={RegexSource};else root.SOURCES.RegexSource=RegexSource;
+})(typeof self!=='undefined'?self:globalThis);
+
+;
+(function(root){
+'use strict';
+function recordKey(r){return JSON.stringify(['version','ap','client','anonce','snonce','mic','eapol','ssid_hex'].map(k=>r[k]));}
+function sameSource(a,b){if(a.kind!==b.kind)return false;if(a.kind==='file')return a.file===b.file;if(a.kind==='regex')return a.pattern===b.pattern;return a.start===b.start&&a.end===b.end&&a.format===b.format;}
+class Pool{
+ constructor(url,onUpdate,WorkerClass){this.url=url;this.onUpdate=onUpdate;this.WorkerClass=WorkerClass||root.Worker;this.run=null;}
+ canResume({record,source}){const r=this.run;return !!r&&(r.phase==='stopped'||(r.phase==='running'&&r.paused))&&r.key===recordKey(record)&&sameSource(r.source,source);}
+ start({record,source,workers,engine}){
+  this.validateWorkers(workers);let r=this.run;
+  if(this.canResume({record,source})){
+   if(r.phase==='running'){this.resize(workers);this.resume();return;}
+   r.savedElapsed=this.snapshot(r).elapsed;r.started=performance.now();r.pauseMs=0;r.paused=false;r.ended=null;r.cancelled=false;r.stopRequested=false;r.phase='running';r.engine=engine;r.slots=[];r.resumes++;this.resize(workers);this.emit(r);return;
+  }
+  if(r&&!r.cancelled)throw Error('请先停止当前任务');
+  r={record,key:recordKey(record),engine,source,slots:[],pending:[],reads:0,completed:0,savedElapsed:0,started:performance.now(),paused:false,pauseMs:0,cancelled:false,stopRequested:false,eof:false,seq:0,slotSeq:0,chain:Promise.resolve(),frontier:0,frontierId:1,finished:new Map(),phase:'running',password:null,error:null,resumes:0};this.run=r;this.resize(workers);this.emit(r);
+ }
+ validateWorkers(n){if(!Number.isInteger(n)||n<1||n>256)throw Error('并行数须为 1–256 的整数');}
+ resize(n){
+  this.validateWorkers(n);const r=this.run;if(!r||r.cancelled||r.stopRequested)return;
+  r.desired=r.source.kind==='file'?n:Math.min(n,r.source.total);
+  const live=r.slots.filter(s=>!s.retiring);for(const s of live.slice(r.desired).reverse()){s.retiring=true;s.worker.postMessage({type:'halt'});}
+  this.ensure(r);this.emit(r);
+ }
+ ensure(r){
+  if(r.cancelled||r.stopRequested)return;
+  while(r.slots.filter(s=>!s.retiring).length<r.desired){
+   try{
+    const worker=new this.WorkerClass(this.url),s={worker,id:++r.slotSeq,active:null,assigning:false,total:0,ready:false,paused:false,retiring:false,dead:false,engine:'初始化'};r.slots.push(s);
+    worker.onmessage=e=>{if(this.run===r&&!r.cancelled&&!s.dead)this.message(r,s,e.data);};
+    worker.onerror=e=>{if(this.run===r&&!r.cancelled)this.finish(r,'error',e.message||'Worker 失败');};worker.postMessage({type:'init',record:r.record,engine:r.engine});
+   }catch(e){this.finish(r,'error',e.message);return;}
+  }
+  for(const s of r.slots)if(!s.retiring)this.assign(r,s);
+ }
+ markDone(r,t){r.finished.set(t.id,t.endByte);while(r.finished.has(r.frontierId)){r.frontier=r.finished.get(r.frontierId);r.finished.delete(r.frontierId++);}}
+ account(r,s,tested,partial){
+  const t=s.active;if(!t)return;r.completed+=tested;s.total+=tested;
+  if(tested<t.size&&partial){const tail={...t,size:t.size-tested,tested:0};if(t.candidates)tail.candidates=t.candidates.slice(tested);else tail.start=t.start+tested;r.pending.unshift(tail);}else this.markDone(r,t);
+  s.active=null;
+ }
+ remove(r,s){s.dead=true;s.worker.terminate();r.slots=r.slots.filter(x=>x!==s);}
+ message(r,s,m){
+  if(m.type==='error'){this.finish(r,'error',m.message);return;}
+  if(m.type==='ready'){s.ready=true;s.engine=m.engine;if(s.retiring||r.stopRequested)s.worker.postMessage({type:'halt'});else{if(r.paused)s.worker.postMessage({type:'pause'});this.assign(r,s);}}
+  if(m.type==='paused'&&r.paused){if(s.active&&s.active.id===m.taskId)s.active.tested=m.tested;s.paused=true;}
+  if(['progress','done','found','halted'].includes(m.type)){
+   if(s.active){if(s.active.id!==m.taskId)return;s.active.tested=m.tested;}
+   else if(m.taskId!==null)return;
+   if(m.type==='found'){r.password=m.password;this.finish(r,'found');return;}
+   if(m.type==='done'){this.account(r,s,m.tested,false);if(s.retiring||r.stopRequested){this.remove(r,s);}else this.assign(r,s);}
+   if(m.type==='halted'){this.account(r,s,m.tested,true);this.remove(r,s);}
+  }
+  this.ensure(r);this.complete(r);this.emit(r);
+ }
+ async assign(r,s){
+  if(r.cancelled||r.stopRequested||r.paused||s.dead||s.retiring||s.active||s.assigning||!s.ready)return;
+  if(r.pending.length){this.dispatch(s,r.pending.shift());return;}
+  if(r.eof){this.complete(r);return;}
+  s.assigning=true;r.reads++;
   try{
-   const promise=r.chain.then(async()=>{if(r.cancelled)return null;const task=await r.source.nextBatch();return task?{...task,id:++r.seq,tested:0}:null;});
-   r.chain=promise.catch(()=>null);const task=await promise;if(r.cancelled)return;
-   if(!task)r.eof=true;else if(r.paused)slot.queued=task;else this.dispatch(r,slot,task);
+   const promise=r.chain.then(async()=>{if(r.cancelled)return null;if(r.pending.length)return r.pending.shift();const t=await r.source.nextBatch();return t?{...t,id:++r.seq,tested:0}:null;});r.chain=promise.catch(()=>null);
+   const t=await promise;if(r.cancelled)return;
+   if(!t)r.eof=true;else if(r.stopRequested||r.paused||s.retiring||s.dead)r.pending.push(t);else this.dispatch(s,t);
   }catch(e){if(!r.cancelled)this.finish(r,'error',e.message);}
-  finally{slot.assigning=false;if(!r.cancelled){this.complete(r);this.emit(r);}}
+  finally{s.assigning=false;r.reads--;if(!r.cancelled){this.ensure(r);this.complete(r);this.emit(r);}}
  }
- dispatch(r,slot,task){slot.active=task;slot.worker.postMessage({type:'task',task});}
- complete(r){if(r.eof&&!r.slots.some(s=>s.active||s.queued||s.assigning))this.finish(r,'done');}
- pause(){const r=this.run;if(!r||r.cancelled||r.paused)return;r.paused=true;r.pauseStart=performance.now();for(const s of r.slots){s.paused=false;s.worker.postMessage({type:'pause'});}this.emit(r);}
- resume(){const r=this.run;if(!r||r.cancelled||!r.paused)return;r.pauseMs+=performance.now()-r.pauseStart;r.paused=false;for(const s of r.slots){s.paused=false;s.worker.postMessage({type:'resume'});this.assign(r,s);}this.emit(r);}
- stop(){const r=this.run;if(r&&!r.cancelled)this.finish(r,'stopped');}
- finish(r,phase,error=null){
-  if(r.cancelled)return;r.phase=phase;r.error=error;r.ended=performance.now();r.cancelled=true;
-  for(const s of r.slots)s.worker.terminate();this.emit(r);
+ dispatch(s,t){s.active=t;s.worker.postMessage({type:'task',task:t});}
+ complete(r){
+  if(r.cancelled)return;
+  if(r.stopRequested){if(!r.slots.length&&!r.reads){clearTimeout(r.stopTimer);r.phase='stopped';r.cancelled=true;r.ended=performance.now();this.emit(r);}return;}
+  if(r.eof&&!r.pending.length&&!r.reads&&!r.slots.some(s=>s.active))this.finish(r,'done');
  }
+ pause(){const r=this.run;if(!r||r.cancelled||r.paused||r.stopRequested)return;r.paused=true;r.pauseStart=performance.now();for(const s of r.slots){s.paused=false;s.worker.postMessage({type:'pause'});}this.emit(r);}
+ resume(){const r=this.run;if(!r||r.cancelled||!r.paused||r.stopRequested)return;r.pauseMs+=performance.now()-r.pauseStart;r.paused=false;for(const s of r.slots){s.paused=false;s.worker.postMessage({type:'resume'});}this.ensure(r);this.emit(r);}
+ stop(){
+  const r=this.run;if(!r||r.cancelled||r.stopRequested)return;if(r.paused){r.pauseMs+=performance.now()-r.pauseStart;r.paused=false;}
+  r.phase='stopping';r.stopRequested=true;for(const s of [...r.slots]){s.retiring=true;s.worker.postMessage({type:'halt'});}
+  r.stopTimer=setTimeout(()=>{for(const s of [...r.slots]){this.account(r,s,s.active?.tested||0,true);this.remove(r,s);}this.complete(r);},3000);this.complete(r);this.emit(r);
+ }
+ finish(r,phase,error=null){if(r.cancelled)return;clearTimeout(r.stopTimer);r.phase=phase;r.error=error;r.ended=performance.now();r.cancelled=true;for(const s of r.slots)s.worker.terminate();this.emit(r);}
  snapshot(r=this.run){
-  if(!r)return null;const now=r.ended||performance.now(),elapsed=Math.max(.001,(now-r.started-r.pauseMs-(r.paused?now-r.pauseStart:0))/1000);
+  if(!r)return null;const now=r.ended||performance.now(),elapsed=Math.max(.001,r.savedElapsed+(now-r.started-r.pauseMs-(r.paused?now-r.pauseStart:0))/1000);
   const tested=r.completed+r.slots.reduce((n,s)=>n+(s.active?.tested||0),0),processed=r.source.kind!=='file'?tested:r.frontier,total=r.source.total,rate=tested/elapsed;
-  return {phase:r.phase,paused:r.paused,allPaused:r.slots.every(s=>s.paused),tested,skipped:r.source.skipped,processed,total,rate,elapsed,percent:Math.min(100,processed/total*100),eta:r.source.kind!=='file'&&rate>0?(total-tested)/rate:null,password:r.password,error:r.error,kind:r.source.kind,
-   slots:r.slots.map(s=>({id:s.id,total:s.total+(s.active?.tested||0),engine:s.engine,state:r.cancelled?'结束':r.paused?(s.paused?'已暂停':'暂停中'):s.active?'计算中':s.assigning?'分配中':s.ready?'等待':'初始化',range:s.active?(s.active.label||(s.active.candidates?`TXT 批次 ${s.active.id}`:`${String(s.active.start).padStart(8,'0')}–${String(s.active.end).padStart(8,'0')}`)):'—'}))};
+  return {phase:r.phase,paused:r.paused,allPaused:r.slots.every(s=>s.paused),tested,skipped:r.source.skipped,processed,total,rate,elapsed,percent:Math.min(100,processed/total*100),eta:r.source.kind!=='file'&&rate>0?(total-tested)/rate:null,password:r.password,error:r.error,kind:r.source.kind,desired:r.desired,resumes:r.resumes,
+   slots:r.slots.map(s=>({id:s.id,total:s.total+(s.active?.tested||0),engine:s.engine,state:r.cancelled?'结束':s.retiring?'收回任务':r.paused?(s.paused?'已暂停':'暂停中'):s.active?'计算中':s.assigning?'分配中':s.ready?'等待':'初始化',range:s.active?(s.active.label||(s.active.candidates?`TXT 批次 ${s.active.id}`:`${String(s.active.start).padStart(8,'0')}–${String(s.active.end).padStart(8,'0')}`)):'—'}))};
  }
  emit(r){this.onUpdate(this.snapshot(r));}
 }
-root.ParallelPool=Pool;
+if(typeof module!=='undefined'&&module.exports)module.exports={Pool};else root.ParallelPool=Pool;
 })(typeof self!=='undefined'?self:globalThis);

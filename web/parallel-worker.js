@@ -72,6 +72,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.WPA2
 /* Bounded, local PCAP/PCAPNG reader. Only wireless DLT 105/127 is supported. */
 (function(root){
 'use strict';
+const cryptoTools=typeof module!=='undefined'&&module.exports?require('../../web/crypto.js'):root.WPA2;
 const hex=a=>Array.from(a,x=>x.toString(16).padStart(2,'0')).join('');
 const mac=a=>Array.from(a,x=>x.toString(16).padStart(2,'0')).join(':');
 const eq=(a,b)=>a.length===b.length&&a.every((x,i)=>x===b[i]);
@@ -194,7 +195,7 @@ async function parse(file,onProgress=()=>{}){
   const net=networks.get(s.ap),m2=s.messages[2];s.ssid_hex=net?.ssids.size===1?[...net.ssids][0]:'';
   const supported=s.version===2&&Object.values(s.messages).every(k=>k.version===2&&(k.keyLength===16||([2,4].includes(k.message)&&k.keyLength===0)))&&(m2?.mode===true||(m2?.mode===null&&net?.mode===true));
   s.supported=!!supported;s.mic=m2?.mic;s.eapol=m2?.eapol;
-  s.reason=s.ambiguous?'Replay/Nonce 或验证数据冲突':s.version!==2?'不支持描述符版本':!m2?'缺少 M2':!s.anonce?'缺少 ANonce (M1/M3)':!s.snonce?'缺少 SNonce':!nz(WPA2.hex(m2.mic))?'M2 MIC 缺失':!supported?'UNSUPPORTED / NOT TESTED：未确认 WPA2-PSK + CCMP':'';
+  s.reason=s.ambiguous?'Replay/Nonce 或验证数据冲突':s.version!==2?'不支持描述符版本':!m2?'缺少 M2':!s.anonce?'缺少 ANonce (M1/M3)':!s.snonce?'缺少 SNonce':!nz(cryptoTools.hex(m2.mic))?'M2 MIC 缺失':!supported?'UNSUPPORTED / NOT TESTED：未确认 WPA2-PSK + CCMP':'';
   s.verifiable=!s.reason;s.complete=s.verifiable&&s.mask===15;delete s.messages;sessions.push(s);
  }
  onProgress(1);return {sessions,stats,links:[...links]};
@@ -228,31 +229,42 @@ const api={create};if(typeof module!=='undefined'&&module.exports)module.exports
 })(typeof self!=='undefined'?self:globalThis);
 
 ;
+(function(root){
 'use strict';
-let verifier=null,job=null,paused=false,wake=null,busy=false;
-async function run(task){
- if(busy)throw Error('Worker 同时收到多个任务');busy=true;job=task;
- let tested=0,last=performance.now();
- function report(type,extra={}){postMessage({type,taskId:task.id,tested,...extra});}
- try{
-  const total=task.candidates?task.candidates.length:task.end-task.start+1;
-  for(let i=0;i<total;i++){
-   if(paused){report('paused');await new Promise(r=>wake=r);wake=null;}
-   const password=task.candidates?task.candidates[i]:String(task.start+i).padStart(8,'0');
-   const match=await verifier.verify(password);tested++;
-   if(match){report('found',{password});return;}
-   if(performance.now()-last>250){report('progress');last=performance.now();await new Promise(r=>setTimeout(r,0));}
-  }
-  report('done');
- }finally{busy=false;job=null;}
+class TaskRunner{
+ constructor(send){this.send=send;this.verifier=null;this.busy=false;this.paused=false;this.halted=false;this.wake=null;}
+ pause(){this.paused=true;if(!this.busy)this.send({type:'paused',taskId:null,tested:0});}
+ resume(){this.paused=false;if(this.wake)this.wake();}
+ halt(){this.halted=true;this.paused=false;if(this.wake)this.wake();if(!this.busy)this.send({type:'halted',taskId:null,tested:0});}
+ async run(task){
+  if(this.busy||!this.verifier)throw Error('计算任务状态错误');this.busy=true;let tested=0,last=performance.now();
+  const report=(type,extra={})=>this.send({type,taskId:task.id,tested,...extra});
+  try{
+   const total=task.candidates?task.candidates.length:task.end-task.start+1;
+   for(let i=0;i<total;i++){
+    if(this.paused){report('paused');await new Promise(r=>this.wake=r);this.wake=null;}
+    if(this.halted){report('halted');return;}
+    const password=task.candidates?task.candidates[i]:String(task.start+i).padStart(8,'0');
+    const match=await this.verifier.verify(password);tested++;
+    if(match){report('found',{password});return;}
+    if(performance.now()-last>200){report('progress');last=performance.now();await new Promise(r=>setTimeout(r,0));}
+   }
+   report(this.halted?'halted':'done');
+  }finally{this.busy=false;if(this.paused&&!this.halted)this.send({type:'paused',taskId:null,tested:0});}
+ }
 }
+if(typeof module!=='undefined'&&module.exports)module.exports={TaskRunner};else root.TaskRunner=TaskRunner;
+})(typeof self!=='undefined'?self:globalThis);
+
+;
+'use strict';
+const runner=new TaskRunner(m=>postMessage(m));
 onmessage=async e=>{
  const m=e.data;
  try{
   if(m.type==='parse'){const result=await PCAP.parse(m.file,p=>postMessage({type:'importProgress',progress:p}));postMessage({type:'parsed',result});}
-  else if(m.type==='init'){verifier=await ENGINE.create(m.record,m.engine);postMessage({type:'ready',engine:verifier.engine});}
-  else if(m.type==='task'){if(!verifier)throw Error('Worker 尚未初始化');await run(m.task);}
-  else if(m.type==='pause'){paused=true;if(!busy)postMessage({type:'paused',taskId:null,tested:0});}
-  else if(m.type==='resume'){paused=false;if(wake)wake();}
- }catch(err){postMessage({type:'error',message:err.message,taskId:job?.id});}
+  else if(m.type==='init'){runner.verifier=await ENGINE.create(m.record,m.engine);postMessage({type:'ready',engine:runner.verifier.engine});}
+  else if(m.type==='task')await runner.run(m.task);
+  else if(m.type==='pause')runner.pause();else if(m.type==='resume')runner.resume();else if(m.type==='halt')runner.halt();
+ }catch(err){postMessage({type:'error',message:err.message});}
 };

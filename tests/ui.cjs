@@ -61,7 +61,7 @@ const numeric=require('./fixtures/wpa2-numeric.json');
   assert(posts.every(body=>!body.includes(fixture.password)&&!body.includes('wrong-password')));
   await page.locator('#dictionary').setInputFiles({name:'many.txt',mimeType:'text/plain',buffer:Buffer.from('wrong-password\n'.repeat(100))});
   await page.locator('#start').click();await page.locator('#pause').click();await page.waitForFunction(()=>document.getElementById('verification').textContent.includes('已暂停'));
-  await page.locator('#pause').click();await page.locator('#stop').click();assert.match(await page.locator('#verification').textContent(),/已停止/);
+  await page.locator('#pause').click();await page.locator('#stop').click();await page.waitForFunction(()=>document.getElementById('verification').textContent.includes('已停止'));
   assert(await page.locator('#pause').isDisabled());
   record=numeric.record;captureId=2;
   await page.evaluate(()=>window.dispatchEvent(new Event('online')));
